@@ -11,6 +11,16 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // Automatically forward any OAuth/PKCE `code` parameter to /auth/confirm handler
+  if (
+    request.nextUrl.searchParams.has("code") &&
+    !request.nextUrl.pathname.startsWith("/auth/confirm")
+  ) {
+    const confirmUrl = request.nextUrl.clone();
+    confirmUrl.pathname = "/auth/confirm";
+    return NextResponse.redirect(confirmUrl);
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
