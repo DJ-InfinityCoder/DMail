@@ -1,0 +1,211 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 350 15% 98%;
+    --foreground: 352 35% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 352 35% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 352 35% 10%;
+    --primary: 352 64% 33%; /* #8B1E2D */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 350 15% 94%;
+    --secondary-foreground: 352 35% 15%;
+    --muted: 350 10% 93%;
+    --muted-foreground: 352 15% 45%;
+    --accent: 352 64% 33%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 350 15% 88%;
+    --input: 350 15% 88%;
+    --ring: 352 64% 33%;
+    --radius: 0.65rem;
+    --sidebar-width: 240px;
+    --email-list-width: 380px;
+  }
+
+  .dark {
+    --background: 352 30% 6%;
+    --foreground: 350 15% 95%;
+    --card: 352 25% 9%;
+    --card-foreground: 350 15% 95%;
+    --popover: 352 25% 11%;
+    --popover-foreground: 350 15% 95%;
+    --primary: 352 64% 45%; /* Vibrant #8B1E2D variant for dark mode */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 352 20% 14%;
+    --secondary-foreground: 350 15% 95%;
+    --muted: 352 15% 15%;
+    --muted-foreground: 350 10% 60%;
+    --accent: 352 64% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 50.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 352 20% 18%;
+    --input: 352 20% 18%;
+    --ring: 352 64% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  }
+
+  /* Custom scrollbar for the dark theme */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@layer components {
+  /* Glass morphism card */
+  .glass {
+    @apply bg-card border border-border/80 shadow-sm;
+  }
+
+  .glass-hover {
+    @apply glass transition-all duration-200;
+  }
+
+  .glass-hover:hover {
+    @apply bg-card border-[#8B1E2D]/40 shadow-sm;
+  }
+
+  /* Solid clean primary color */
+  .gradient-text {
+    @apply text-[#8B1E2D];
+  }
+
+  /* Solid primary button background */
+  .gradient-primary {
+    background: #8B1E2D;
+  }
+
+  .gradient-accent {
+    background: #8B1E2D;
+  }
+
+  /* Subtle dot-pulse animation for "new mail" indicator */
+  .pulse-dot {
+    @apply relative;
+  }
+
+  .pulse-dot::after {
+    content: '';
+    @apply absolute top-0 right-0 w-2 h-2 rounded-full;
+    background: #8B1E2D;
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Email row - dense list item */
+  .email-row {
+    @apply flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors duration-100 border-b border-border/30;
+  }
+
+  .email-row:hover {
+    @apply bg-secondary/50;
+  }
+
+  .email-row.active {
+    @apply bg-primary/10 border-l-2 border-l-primary;
+  }
+
+  .email-row.unread {
+    @apply font-semibold;
+  }
+
+  /* Keyboard shortcut badge */
+  .kbd {
+    @apply inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-mono font-medium rounded;
+    @apply bg-secondary text-muted-foreground border border-border;
+    min-width: 20px;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Keyframe animations */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 hsl(258 90% 66% / 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 6px hsl(258 90% 66% / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 hsl(258 90% 66% / 0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-up {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up 0.15s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
