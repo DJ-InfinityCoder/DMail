@@ -63,10 +63,8 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <div className="glass rounded-xl p-8 shadow-2xl shadow-black/30">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-            <Mail className="w-5 h-5 text-white" />
-          </div>
+        <div className="flex items-center justify-center gap-2.5 mb-6">
+          <img src="/icon.png" alt="DMail Logo" className="w-10 h-10 object-contain" />
           <span className="text-2xl font-bold tracking-tight">DMail</span>
         </div>
 

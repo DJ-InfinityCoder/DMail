@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme-switcher";
+import { PwaInstallButton } from "@/components/pwa-install-button";
 import {
   Mail,
   Shield,
@@ -17,11 +19,16 @@ export default function Home() {
     <main className="min-h-screen bg-background text-foreground overflow-hidden selection:bg-[#8B1E2D] selection:text-white">
       {/* Navigation */}
       <nav className="w-full border-b border-border/40 bg-background/95 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto flex justify-between items-center px-6 h-16">
-          <span className="text-xl font-bold tracking-tight text-[#8B1E2D]">
-            DMail
-          </span>
-          <div className="flex items-center gap-4">
+        <div className="max-w-6xl mx-auto flex justify-between items-center px-4 sm:px-6 h-16">
+          <div className="flex items-center gap-2.5">
+            <img src="/icon.png" alt="DMail Logo" className="w-7 h-7 object-contain" />
+            <span className="text-xl font-bold tracking-tight text-[#8B1E2D]">
+              DMail
+            </span>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <PwaInstallButton variant="ghost" size="sm" showText={false} />
+            <ThemeToggle variant="ghost" size="icon" />
             <Link
               href="/auth/login"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"

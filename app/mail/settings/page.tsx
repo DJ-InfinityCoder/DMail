@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Globe, Mail, Building2 } from "lucide-react";
+import { AppearanceSettings } from "@/components/mail/appearance-settings";
+import { NotificationSettings } from "@/components/mail/notification-settings";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -66,6 +68,12 @@ export default async function SettingsPage() {
             </div>
           )}
         </div>
+
+        {/* Appearance / Theme Settings */}
+        <AppearanceSettings />
+
+        {/* Push Notifications & App Icon Badging Settings */}
+        <NotificationSettings />
 
         {/* Quick links */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

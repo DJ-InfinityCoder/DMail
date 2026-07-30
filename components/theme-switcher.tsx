@@ -12,61 +12,60 @@ import { Laptop, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
-const ThemeSwitcher = () => {
+const ICON_SIZE = 16;
+
+/**
+ * ThemeSwitcher renders a dropdown menu to choose Light, Dark, or System mode.
+ */
+export const ThemeSwitcher = ({
+  align = "start",
+  size = "sm",
+  variant = "ghost",
+}: {
+  align?: "start" | "center" | "end";
+  size?: "default" | "sm" | "lg" | "icon";
+  variant?: "ghost" | "outline" | "default" | "secondary";
+}) => {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
-  // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
     setMounted(true);
   }, []);
 
   if (!mounted) {
-    return null;
+    return (
+      <Button variant={variant} size={size} disabled aria-label="Toggle theme">
+        <Sun size={ICON_SIZE} className="text-muted-foreground opacity-50" />
+      </Button>
+    );
   }
-
-  const ICON_SIZE = 16;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size={"sm"}>
+        <Button variant={variant} size={size} aria-label="Select theme">
           {theme === "light" ? (
-            <Sun
-              key="light"
-              size={ICON_SIZE}
-              className={"text-muted-foreground"}
-            />
+            <Sun key="light" size={ICON_SIZE} className="text-amber-500" />
           ) : theme === "dark" ? (
-            <Moon
-              key="dark"
-              size={ICON_SIZE}
-              className={"text-muted-foreground"}
-            />
+            <Moon key="dark" size={ICON_SIZE} className="text-slate-300" />
           ) : (
-            <Laptop
-              key="system"
-              size={ICON_SIZE}
-              className={"text-muted-foreground"}
-            />
+            <Laptop key="system" size={ICON_SIZE} className="text-muted-foreground" />
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-content" align="start">
-        <DropdownMenuRadioGroup
-          value={theme}
-          onValueChange={(e) => setTheme(e)}
-        >
-          <DropdownMenuRadioItem className="flex gap-2" value="light">
-            <Sun size={ICON_SIZE} className="text-muted-foreground" />{" "}
+      <DropdownMenuContent className="w-36" align={align}>
+        <DropdownMenuRadioGroup value={theme} onValueChange={(val) => setTheme(val)}>
+          <DropdownMenuRadioItem className="flex items-center gap-2 cursor-pointer" value="light">
+            <Sun size={ICON_SIZE} className="text-amber-500" />
             <span>Light</span>
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem className="flex gap-2" value="dark">
-            <Moon size={ICON_SIZE} className="text-muted-foreground" />{" "}
+          <DropdownMenuRadioItem className="flex items-center gap-2 cursor-pointer" value="dark">
+            <Moon size={ICON_SIZE} className="text-slate-400" />
             <span>Dark</span>
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem className="flex gap-2" value="system">
-            <Laptop size={ICON_SIZE} className="text-muted-foreground" />{" "}
+          <DropdownMenuRadioItem className="flex items-center gap-2 cursor-pointer" value="system">
+            <Laptop size={ICON_SIZE} className="text-muted-foreground" />
             <span>System</span>
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
@@ -75,4 +74,49 @@ const ThemeSwitcher = () => {
   );
 };
 
-export { ThemeSwitcher };
+/**
+ * ThemeToggle renders a quick 1-click icon toggle button between Light and Dark modes.
+ */
+export const ThemeToggle = ({
+  size = "sm",
+  variant = "ghost",
+  className = "",
+}: {
+  size?: "default" | "sm" | "lg" | "icon";
+  variant?: "ghost" | "outline" | "default" | "secondary";
+  className?: string;
+}) => {
+  const [mounted, setMounted] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <Button variant={variant} size={size} className={className} disabled aria-label="Toggle theme">
+        <Sun size={ICON_SIZE} className="text-muted-foreground opacity-50" />
+      </Button>
+    );
+  }
+
+  const isDark = resolvedTheme === "dark";
+
+  return (
+    <Button
+      variant={variant}
+      size={size}
+      className={className}
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label="Toggle light and dark mode"
+    >
+      {isDark ? (
+        <Sun size={ICON_SIZE} className="text-amber-400 hover:text-amber-300 transition-colors" />
+      ) : (
+        <Moon size={ICON_SIZE} className="text-slate-600 hover:text-slate-800 transition-colors" />
+      )}
+    </Button>
+  );
+};

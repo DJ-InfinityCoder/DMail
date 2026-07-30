@@ -221,7 +221,7 @@ function EmailMessage({
       onMouseLeave={() => setShowActions(false)}
     >
       {/* Message Header */}
-      <div className="flex items-start gap-3.5 px-6 pt-5 pb-3">
+      <div className="flex items-start gap-3 px-3 sm:px-6 pt-5 pb-3">
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 text-white mt-0.5"
           style={{ background: getAvatarColor(email.from_address) }}
@@ -304,7 +304,7 @@ function EmailMessage({
       </div>
 
       {/* Message Body */}
-      <div className="px-6 pb-4 pl-[68px]">
+      <div className="px-3 sm:px-6 pb-4 sm:pl-[68px]">
         {email.body_html ? (
           <iframe
             ref={iframeRef}
@@ -492,7 +492,7 @@ function InlineReplyComposer({
     mode === "reply" ? Reply : mode === "replyAll" ? ReplyAll : Forward;
 
   return (
-    <div className="mx-6 mb-6 border border-border rounded-xl bg-card overflow-hidden animate-slide-in-up">
+    <div className="mx-2 sm:mx-6 mb-6 border border-border rounded-xl bg-card overflow-hidden animate-slide-in-up">
       {/* Composer Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-secondary/30">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -727,14 +727,15 @@ export function EmailThread({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
       {/* ── Top Toolbar ── */}
-      <div className="flex items-center justify-between px-4 h-12 border-b border-border bg-card flex-shrink-0">
+      <div className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-border bg-card flex-shrink-0">
         <div className="flex items-center gap-1">
           <button
             onClick={() => router.push(`/mail/${folder}`)}
-            className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-            title="Back"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-secondary/60 hover:bg-secondary text-foreground text-xs font-medium transition-colors"
+            title="Back to list"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 text-[#8B1E2D]" />
+            <span>Back</span>
           </button>
         </div>
 

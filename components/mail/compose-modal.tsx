@@ -9,6 +9,7 @@ import {
 } from "react";
 import { X, Paperclip, Send, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useNotifications } from "@/components/notification-provider";
 import type { Mailbox } from "@/lib/types";
 
 interface ComposeModalProps {
@@ -244,6 +245,7 @@ export function ComposeModal({
   recentContacts = [],
   onContactsUsed,
 }: ComposeModalProps) {
+  const { sendNotification } = useNotifications();
   const [to, setTo] = useState<string[]>([]);
   const [cc, setCc] = useState<string[]>([]);
   const [bcc, setBcc] = useState<string[]>([]);
@@ -325,6 +327,12 @@ export function ComposeModal({
       // Update contacts cache with newly used addresses
       onContactsUsed?.([...to, ...cc, ...bcc]);
 
+      // Trigger system push notification & floating in-app popup acknowledgment
+      sendNotification("Email Sent Successfully 🚀", {
+        body: `To: ${to.join(", ")}${subject ? ` | ${subject}` : ""}`,
+        tag: "email-sent-" + Date.now(),
+      });
+
       // Reset and close
       resetForm();
       onOpenChange(false);
@@ -361,8 +369,8 @@ export function ComposeModal({
         onClick={handleClose}
       />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-2xl mx-4 mb-4 sm:mb-0 glass rounded-xl shadow-sm animate-slide-in-up overflow-hidden">
+      {/* Modal Container */}
+      <div className="relative w-full max-w-2xl sm:mx-4 glass rounded-none sm:rounded-xl shadow-2xl animate-slide-in-up overflow-hidden h-full sm:h-auto flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-border/30">
           <h3 className="text-sm font-semibold">

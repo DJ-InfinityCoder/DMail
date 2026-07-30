@@ -17,6 +17,8 @@ import {
 import type { Organization, Mailbox } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { ThemeSwitcher } from "@/components/theme-switcher";
+import { PwaInstallButton } from "@/components/pwa-install-button";
 
 interface SidebarProps {
   org: Organization;
@@ -24,6 +26,7 @@ interface SidebarProps {
   unreadCount: number;
   onCompose: () => void;
   user: User;
+  onNavigate?: () => void;
 }
 
 const folders = [
@@ -42,6 +45,7 @@ export function Sidebar({
   unreadCount,
   onCompose,
   user,
+  onNavigate,
 }: SidebarProps) {
   const pathname = usePathname();
   const supabase = createClient();
@@ -55,9 +59,12 @@ export function Sidebar({
     <aside className="w-[var(--sidebar-width)] h-full flex flex-col border-r border-border bg-card">
       {/* Brand Header */}
       <div className="px-4 h-14 flex items-center justify-between border-b border-border/80 min-w-0">
-        <span className="text-base font-bold tracking-tight text-[#8B1E2D]">
-          DMail
-        </span>
+        <div className="flex items-center gap-2.5">
+          <img src="/icon.png" alt="DMail Logo" className="w-7 h-7 object-contain" />
+          <span className="text-base font-bold tracking-tight text-[#8B1E2D]">
+            DMail
+          </span>
+        </div>
         <span className="text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded bg-secondary text-muted-foreground">
           Workspace
         </span>
@@ -66,8 +73,11 @@ export function Sidebar({
       {/* Compose Button */}
       <div className="p-3">
         <button
-          onClick={onCompose}
-          className="w-full flex items-center  gap-2 px-4 py-2.5 rounded-lg bg-[#8B1E2D] text-white text-sm font-semibold hover:bg-[#6E1522] transition-colors shadow-sm"
+          onClick={() => {
+            onCompose();
+            onNavigate?.();
+          }}
+          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#8B1E2D] text-white text-sm font-semibold hover:bg-[#6E1522] transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
           <span>Compose</span>
@@ -87,6 +97,7 @@ export function Sidebar({
               <Link
                 key={folder.slug}
                 href={`/mail/${folder.slug}`}
+                onClick={() => onNavigate?.()}
                 className={`
                   flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
                   ${
@@ -133,6 +144,7 @@ export function Sidebar({
       <div className="border-t border-border p-2.5 space-y-1 bg-muted/20">
         <Link
           href="/mail/settings"
+          onClick={() => onNavigate?.()}
           className={`
             flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
             ${
@@ -147,16 +159,20 @@ export function Sidebar({
         </Link>
 
         <div className="pt-1 flex items-center justify-between px-3 py-1.5 text-xs text-muted-foreground">
-          <span className="truncate max-w-[140px] font-mono text-[11px]" title={user.email}>
+          <span className="truncate max-w-[90px] font-mono text-[11px]" title={user.email}>
             {user.email}
           </span>
-          <button
-            onClick={handleSignOut}
-            className="p-1 rounded hover:bg-secondary hover:text-foreground text-muted-foreground transition-colors"
-            title="Sign out"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-0.5">
+            <PwaInstallButton showText={false} variant="ghost" size="icon" />
+            <ThemeSwitcher size="icon" variant="ghost" align="start" />
+            <button
+              onClick={handleSignOut}
+              className="p-1.5 rounded-md hover:bg-secondary hover:text-foreground text-muted-foreground transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </aside>
