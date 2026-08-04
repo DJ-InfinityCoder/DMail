@@ -28,6 +28,12 @@
     --radius: 0.65rem;
     --sidebar-width: 240px;
     --email-list-width: 380px;
+
+    /* Extended semantic tokens */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -50,6 +56,9 @@
     --border: 352 20% 18%;
     --input: 352 20% 18%;
     --ring: 352 64% 45%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
   }
 }
 
@@ -67,9 +76,10 @@
     padding-right: env(safe-area-inset-right, 0px);
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    scrollbar-gutter: stable;
   }
 
-  /* Custom scrollbar for the dark theme */
+  /* Custom scrollbar with theme integration */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -90,9 +100,9 @@
 }
 
 @layer components {
-  /* Glass morphism card */
+  /* Enhanced Glass morphism surfaces */
   .glass {
-    @apply bg-card border border-border/80 shadow-sm;
+    @apply bg-card/95 backdrop-blur-md border border-border/80 shadow-sm;
   }
 
   .glass-hover {
@@ -100,12 +110,11 @@
   }
 
   .glass-hover:hover {
-    @apply bg-card border-[#8B1E2D]/40 shadow-sm;
+    @apply bg-card border-[#8B1E2D]/40 shadow-md;
   }
 
-  /* Solid clean primary color */
-  .gradient-text {
-    @apply text-[#8B1E2D];
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/60 shadow-sm rounded-xl;
   }
 
   /* Solid primary button background */
@@ -148,9 +157,31 @@
 
   /* Keyboard shortcut badge */
   .kbd {
-    @apply inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-mono font-medium rounded;
-    @apply bg-secondary text-muted-foreground border border-border;
-    min-width: 20px;
+    @apply inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded leading-none;
+    @apply bg-secondary text-muted-foreground border border-border/80 shadow-sm;
+    letter-spacing: 0.05em;
+    min-width: 22px;
+  }
+
+  /* Touch accessibility target min height/width */
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Skeleton Loading Shimmer */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted) / 0.4) 0%,
+      hsl(var(--muted) / 0.8) 50%,
+      hsl(var(--muted) / 0.4) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
   }
 }
 
@@ -163,13 +194,22 @@
 /* Keyframe animations */
 @keyframes pulse-ring {
   0% {
-    box-shadow: 0 0 0 0 hsl(258 90% 66% / 0.5);
+    box-shadow: 0 0 0 0 hsl(352 64% 45% / 0.5);
   }
   70% {
-    box-shadow: 0 0 0 6px hsl(258 90% 66% / 0);
+    box-shadow: 0 0 0 6px hsl(352 64% 45% / 0);
   }
   100% {
-    box-shadow: 0 0 0 0 hsl(258 90% 66% / 0);
+    box-shadow: 0 0 0 0 hsl(352 64% 45% / 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
   }
 }
 
@@ -186,7 +226,7 @@
 
 @keyframes slide-in-up {
   from {
-    transform: translateY(8px);
+    transform: translateY(12px);
     opacity: 0;
   }
   to {
@@ -209,7 +249,7 @@
 }
 
 .animate-slide-in-up {
-  animation: slide-in-up 0.15s ease-out;
+  animation: slide-in-up 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .animate-fade-in {

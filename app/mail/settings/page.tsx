@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Globe, Mail, Building2 } from "lucide-react";
 import { AppearanceSettings } from "@/components/mail/appearance-settings";
 import { NotificationSettings } from "@/components/mail/notification-settings";
+import { SignaturesManager } from "@/components/mail/signatures-manager";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -26,10 +27,11 @@ export default async function SettingsPage() {
     .select("*", { count: "exact", head: true })
     .eq("org_id", org.id);
 
-  const { count: mailboxCount } = await supabase
+  const { data: mailboxesData, count: mailboxCount } = await supabase
     .from("mailboxes")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", org.id);
+    .select("*")
+    .eq("org_id", org.id)
+    .eq("is_active", true);
 
   const { data: quota } = await supabase
     .from("org_send_quotas")
@@ -42,7 +44,7 @@ export default async function SettingsPage() {
       <div className="max-w-3xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-bold mb-2">Settings</h1>
         <p className="text-sm text-muted-foreground mb-8">
-          Manage your workspace, domains, and mailboxes.
+          Manage your workspace, domains, mailboxes, and signatures.
         </p>
 
         {/* Organization info */}
@@ -74,6 +76,9 @@ export default async function SettingsPage() {
 
         {/* Push Notifications & App Icon Badging Settings */}
         <NotificationSettings />
+
+        {/* Signatures Manager */}
+        <SignaturesManager mailboxes={mailboxesData ?? []} />
 
         {/* Quick links */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

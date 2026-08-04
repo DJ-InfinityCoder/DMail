@@ -62,7 +62,6 @@ export type FolderType =
   | "drafts"
   | "trash"
   | "archive"
-  | "spam"
   | "starred";
 
 export type DnsStatus = "pending" | "valid" | "invalid";

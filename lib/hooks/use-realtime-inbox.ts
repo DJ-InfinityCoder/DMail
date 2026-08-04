@@ -61,8 +61,10 @@ export function useRealtimeInbox(orgId: string) {
   }, [router]);
 
   useEffect(() => {
-    const channel = supabase
-      .channel("inbox-realtime")
+    const client = createClient();
+    const channelId = `inbox-realtime-${orgId}-${Math.random().toString(36).substring(2, 7)}`;
+    const channel = client
+      .channel(channelId)
       .on(
         "postgres_changes",
         {
@@ -91,7 +93,7 @@ export function useRealtimeInbox(orgId: string) {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
-  }, [supabase, orgId, handleNewEmail, router]);
+  }, [orgId, handleNewEmail, router]);
 }

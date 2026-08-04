@@ -4,10 +4,12 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { Menu, X, Plus } from "lucide-react";
 import { Sidebar } from "@/components/mail/sidebar";
 import { ComposeModal } from "@/components/mail/compose-modal";
+import { GlobalSearchModal } from "@/components/mail/global-search-modal";
 import { KeyboardShortcutsOverlay } from "@/components/mail/keyboard-shortcuts-overlay";
+import { OfflineBanner } from "@/components/offline-banner";
 import { ThemeToggle } from "@/components/theme-switcher";
 import { PwaInstallButton } from "@/components/pwa-install-button";
-import { NotificationProvider, useNotifications } from "@/components/notification-provider";
+import { useNotifications } from "@/components/notification-provider";
 import { useRealtimeInbox } from "@/lib/hooks/use-realtime-inbox";
 import { useRecentContacts } from "@/lib/hooks/use-recent-contacts";
 import type { Organization, Mailbox } from "@/lib/types";
@@ -22,12 +24,14 @@ interface ReplyContext {
 
 interface MailContextType {
   openCompose: (context?: ReplyContext) => void;
+  openSearch: () => void;
   recentContacts: string[];
   addContactsToCache: (addrs: string[]) => void;
 }
 
 const MailContext = createContext<MailContextType>({
   openCompose: () => {},
+  openSearch: () => {},
   recentContacts: [],
   addContactsToCache: () => {},
 });
@@ -58,12 +62,12 @@ export function MailShell({
   children,
 }: MailShellProps) {
   const [composeOpen, setComposeOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [replyContext, setReplyContext] = useState<ReplyContext | null>(null);
   const { contacts: recentContacts, addToCache } = useRecentContacts();
 
-  // Enable Realtime inbox updates & push notifications
   useRealtimeInbox(org.id);
 
   const handleCompose = useCallback(
@@ -74,9 +78,19 @@ export function MailShell({
     []
   );
 
-  // Global keyboard shortcuts
+  const handleOpenSearch = useCallback(() => {
+    setSearchOpen(true);
+  }, []);
+
+  // Global keyboard shortcuts (⌘K / Ctrl+K search, ? help)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+        return;
+      }
+
       const target = e.target as HTMLElement;
       if (
         target.tagName === "INPUT" ||
@@ -91,9 +105,14 @@ export function MailShell({
           e.preventDefault();
           setShortcutsOpen((prev) => !prev);
           break;
+        case "c":
+          e.preventDefault();
+          handleCompose();
+          break;
         case "Escape":
           setShortcutsOpen(false);
           setComposeOpen(false);
+          setSearchOpen(false);
           setMobileSidebarOpen(false);
           break;
       }
@@ -109,88 +128,90 @@ export function MailShell({
       <MailContext.Provider
         value={{
           openCompose: handleCompose,
+          openSearch: handleOpenSearch,
           recentContacts,
           addContactsToCache: addToCache,
         }}
       >
-        <div className="h-screen w-full flex flex-col md:flex-row overflow-hidden bg-background">
-          {/* Mobile Header Bar (< md screens) */}
-          <header className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border bg-card flex-shrink-0 z-30 shadow-sm">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setMobileSidebarOpen(true)}
-                className="p-2 -ml-2 rounded-lg hover:bg-secondary text-foreground transition-colors"
-                aria-label="Open Navigation Drawer"
-              >
-                <Menu className="w-5 h-5 text-foreground" />
-              </button>
-              <div className="flex items-center gap-2">
-                <img src="/icon.png" alt="DMail Logo" className="w-6 h-6 object-contain" />
-                <span className="text-lg font-extrabold tracking-tight text-[#8B1E2D]">
-                  DMail
-                </span>
-              </div>
-            </div>
+        <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
+          <OfflineBanner />
 
-            <div className="flex items-center gap-1">
-              <PwaInstallButton size="icon" variant="ghost" showText={false} />
-              <ThemeToggle size="icon" variant="ghost" />
-            </div>
-          </header>
-
-          {/* Mobile Sidebar Overlay Drawer */}
-          {mobileSidebarOpen && (
-            <div className="fixed inset-0 z-50 md:hidden flex">
-              {/* Backdrop */}
-              <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
-                onClick={() => setMobileSidebarOpen(false)}
-              />
-
-              {/* Sidebar drawer content */}
-              <div className="relative w-[280px] max-w-[80vw] h-full bg-card shadow-2xl z-10 animate-slide-in-right">
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden w-full h-full">
+            {/* Mobile Header Bar (< md screens) */}
+            <header className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border bg-card flex-shrink-0 z-30 shadow-sm">
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setMobileSidebarOpen(false)}
-                  className="absolute top-3 right-3 p-1.5 rounded-lg bg-secondary/80 text-muted-foreground hover:text-foreground z-20"
-                  aria-label="Close Navigation Drawer"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="p-2 -ml-2 rounded-lg hover:bg-secondary text-foreground transition-colors"
+                  aria-label="Open Navigation Drawer"
                 >
-                  <X className="w-4 h-4" />
+                  <Menu className="w-5 h-5 text-foreground" />
                 </button>
-                <Sidebar
-                  org={org}
-                  mailboxes={mailboxes}
-                  unreadCount={unreadCount}
-                  onCompose={() => {
-                    setMobileSidebarOpen(false);
-                    handleCompose();
-                  }}
-                  user={user}
-                  onNavigate={() => setMobileSidebarOpen(false)}
-                />
+                <div className="flex items-center gap-2">
+                  <img src="/icon.png" alt="DMail Logo" className="w-6 h-6 object-contain" />
+                  <span className="text-lg font-extrabold tracking-tight text-[#8B1E2D]">
+                    DMail
+                  </span>
+                </div>
               </div>
+
+              <div className="flex items-center gap-1">
+                <PwaInstallButton size="icon" variant="ghost" showText={false} />
+                <ThemeToggle size="icon" variant="ghost" />
+              </div>
+            </header>
+
+            {/* Mobile Sidebar Overlay Drawer */}
+            {mobileSidebarOpen && (
+              <div className="fixed inset-0 z-50 md:hidden flex">
+                <div
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+                  onClick={() => setMobileSidebarOpen(false)}
+                />
+                <div className="relative w-[280px] max-w-[80vw] h-full bg-card shadow-2xl z-10 animate-slide-in-right">
+                  <button
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className="absolute top-3 right-3 p-1.5 rounded-lg bg-secondary/80 text-muted-foreground hover:text-foreground z-20"
+                    aria-label="Close Navigation Drawer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <Sidebar
+                    org={org}
+                    mailboxes={mailboxes}
+                    unreadCount={unreadCount}
+                    onCompose={() => {
+                      setMobileSidebarOpen(false);
+                      handleCompose();
+                    }}
+                    user={user}
+                    onNavigate={() => setMobileSidebarOpen(false)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Desktop Sidebar (>= md screens) */}
+            <div className="hidden md:block h-full flex-shrink-0">
+              <Sidebar
+                org={org}
+                mailboxes={mailboxes}
+                unreadCount={unreadCount}
+                onCompose={() => handleCompose()}
+                user={user}
+              />
             </div>
-          )}
 
-          {/* Desktop Sidebar (>= md screens) */}
-          <div className="hidden md:block h-full flex-shrink-0">
-            <Sidebar
-              org={org}
-              mailboxes={mailboxes}
-              unreadCount={unreadCount}
-              onCompose={() => handleCompose()}
-              user={user}
-            />
+            {/* Main Content Area */}
+            <main className="flex-1 flex overflow-hidden w-full h-full min-w-0">
+              {children}
+            </main>
           </div>
-
-          {/* Main Content Area */}
-          <main className="flex-1 flex overflow-hidden w-full h-full min-w-0">
-            {children}
-          </main>
 
           {/* Mobile Floating Action Button (FAB) for Compose */}
           <button
             onClick={() => handleCompose()}
-            className="md:hidden fixed bottom-6 right-6 z-40 p-4 rounded-full bg-[#8B1E2D] text-white shadow-xl hover:bg-[#6E1522] active:scale-95 transition-all flex items-center justify-center"
+            className="md:hidden fixed bottom-6 right-6 z-40 p-4 rounded-full bg-[#8B1E2D] text-white shadow-xl hover:bg-[#6E1522] active:scale-95 transition-all flex items-center justify-center touch-target"
             title="Compose New Mail"
             aria-label="Compose New Mail"
           >
@@ -206,6 +227,13 @@ export function MailShell({
             replyContext={replyContext}
             recentContacts={recentContacts}
             onContactsUsed={addToCache}
+          />
+
+          {/* Global Search Modal (⌘K) */}
+          <GlobalSearchModal
+            open={searchOpen}
+            onOpenChange={setSearchOpen}
+            orgId={org.id}
           />
 
           {/* Keyboard Shortcuts */}

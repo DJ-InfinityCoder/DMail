@@ -13,12 +13,15 @@ import {
   Settings,
   Plus,
   LogOut,
+  Copy,
+  Check,
 } from "lucide-react";
 import type { Organization, Mailbox } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PwaInstallButton } from "@/components/pwa-install-button";
+import { useState } from "react";
 
 interface SidebarProps {
   org: Organization;
@@ -35,7 +38,6 @@ const folders = [
   { name: "Drafts", slug: "drafts", icon: FileEdit },
   { name: "Starred", slug: "starred", icon: Star },
   { name: "Archive", slug: "archive", icon: Archive },
-  { name: "Spam", slug: "spam", icon: AlertTriangle },
   { name: "Trash", slug: "trash", icon: Trash2 },
 ];
 
@@ -49,10 +51,18 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const supabase = createClient();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     window.location.href = "/auth/login";
+  };
+
+  const handleCopyAddress = (e: React.MouseEvent, mbId: string, address: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(address);
+    setCopiedId(mbId);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -129,10 +139,27 @@ export function Sidebar({
               {mailboxes.map((mb) => (
                 <div
                   key={mb.id}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono text-foreground/90 hover:bg-secondary/60 transition-colors"
+                  onClick={(e) => handleCopyAddress(e, mb.id, mb.address)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] text-foreground/80 hover:bg-secondary/70 hover:text-foreground transition-all cursor-pointer group/mb min-w-0"
+                  title={`Click to copy ${mb.address}`}
                 >
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                  <span className="truncate">{mb.address}</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                  <span className="truncate flex-1 font-mono">{mb.address}</span>
+                  <button
+                    onClick={(e) => handleCopyAddress(e, mb.id, mb.address)}
+                    className={`p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground transition-opacity flex-shrink-0 ${
+                      copiedId === mb.id
+                        ? "opacity-100"
+                        : "opacity-0 group-hover/mb:opacity-100"
+                    }`}
+                    title="Copy email address"
+                  >
+                    {copiedId === mb.id ? (
+                      <Check className="w-3 h-3 text-emerald-500 animate-scale-in" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </button>
                 </div>
               ))}
             </div>
@@ -158,11 +185,11 @@ export function Sidebar({
           <span>Settings & Domains</span>
         </Link>
 
-        <div className="pt-1 flex items-center justify-between px-3 py-1.5 text-xs text-muted-foreground">
-          <span className="truncate max-w-[90px] font-mono text-[11px]" title={user.email}>
+        <div className="pt-1 flex items-center justify-between px-2 py-1.5 text-xs text-muted-foreground gap-1">
+          <span className="truncate max-w-[120px] font-mono text-[10px] text-foreground/75" title={user.email}>
             {user.email}
           </span>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             <PwaInstallButton showText={false} variant="ghost" size="icon" />
             <ThemeSwitcher size="icon" variant="ghost" align="start" />
             <button

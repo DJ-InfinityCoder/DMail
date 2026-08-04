@@ -53,10 +53,14 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const ALLOWED_EMAIL = "231210040@nitdelhi.ac.in";
+  const ALLOWED_EMAIL = process.env.ALLOWED_EMAIL ?? "231210040@nitdelhi.ac.in";
 
-  // Single-user restriction: Block any user other than 231210040@nitdelhi.ac.in
-  if (user && user.email?.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
+  // Single-user restriction: Block any user other than ALLOWED_EMAIL (skip if ALLOWED_EMAIL is "*")
+  if (
+    user &&
+    ALLOWED_EMAIL !== "*" &&
+    user.email?.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()
+  ) {
     await supabase.auth.signOut();
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";

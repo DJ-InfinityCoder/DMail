@@ -23,6 +23,7 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { useMailContext } from "@/components/mail/mail-shell";
+import { RichTextEditor } from "@/components/mail/rich-text-editor";
 import type { Email } from "@/lib/types";
 
 /* ──────────────────────────────────────────────
@@ -136,6 +137,7 @@ function EmailMessage({
         doc.write(`<!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -147,9 +149,10 @@ function EmailMessage({
       padding: 0;
       word-wrap: break-word;
       overflow-wrap: break-word;
+      max-width: 100%;
     }
     a { color: #8B1E2D; }
-    img { max-width: 100%; height: auto; border-radius: 6px; }
+    img { max-width: 100% !important; height: auto !important; border-radius: 6px; }
     blockquote {
       border-left: 3px solid #8B1E2D;
       margin: 8px 0;
@@ -162,8 +165,9 @@ function EmailMessage({
       border-radius: 8px; 
       overflow-x: auto;
       font-size: 13px;
+      max-width: 100%;
     }
-    table { border-collapse: collapse; }
+    table { border-collapse: collapse; max-width: 100% !important; }
     td, th { padding: 4px 8px; }
   </style>
 </head>
@@ -190,7 +194,7 @@ function EmailMessage({
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="w-full flex items-center gap-3 px-6 py-3 hover:bg-secondary/30 transition-colors text-left group"
+        className="w-full flex items-center gap-3 px-3 sm:px-6 py-3 hover:bg-secondary/30 transition-colors text-left group"
       >
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white"
@@ -199,14 +203,14 @@ function EmailMessage({
           {getInitials(email.from_address)}
         </div>
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground truncate max-w-[180px]">
+          <span className="text-sm font-semibold text-foreground truncate max-w-[140px] sm:max-w-[180px]">
             {email.from_address.split("@")[0]}
           </span>
-          <span className="text-xs text-muted-foreground truncate flex-1">
+          <span className="text-xs text-muted-foreground truncate flex-1 hidden sm:inline">
             — {email.body_text?.slice(0, 100) ?? ""}
           </span>
         </div>
-        <span className="text-[11px] text-muted-foreground flex-shrink-0 font-mono">
+        <span className="text-[11px] text-muted-foreground flex-shrink-0 font-mono whitespace-nowrap">
           {formatRelativeDate(email.created_at)}
         </span>
       </button>
@@ -216,12 +220,12 @@ function EmailMessage({
   // Expanded state — full message
   return (
     <div
-      className="group"
+      className="group min-w-0 overflow-hidden"
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
       {/* Message Header */}
-      <div className="flex items-start gap-3 px-3 sm:px-6 pt-5 pb-3">
+      <div className="flex items-start gap-3 px-3 sm:px-6 pt-5 pb-3 min-w-0">
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 text-white mt-0.5"
           style={{ background: getAvatarColor(email.from_address) }}
@@ -229,25 +233,25 @@ function EmailMessage({
           {getInitials(email.from_address)}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-sm font-bold text-foreground">
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-1.5 min-w-0 flex-1">
+              <span className="text-sm font-bold text-foreground truncate">
                 {email.from_address.split("@")[0]}
               </span>
-              <span className="text-xs text-muted-foreground truncate">
+              <span className="text-xs text-muted-foreground truncate hidden sm:inline">
                 &lt;{email.from_address}&gt;
               </span>
             </div>
 
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <span className="text-[11px] text-muted-foreground font-mono">
+              <span className="text-[11px] text-muted-foreground font-mono whitespace-nowrap">
                 {formatRelativeDate(email.created_at)}
               </span>
 
               {/* Action buttons — visible on hover */}
               <div
-                className={`flex items-center gap-0.5 transition-opacity duration-150 ${
+                className={`hidden sm:flex items-center gap-0.5 transition-opacity duration-150 ${
                   showActions ? "opacity-100" : "opacity-0"
                 }`}
               >
@@ -277,7 +281,7 @@ function EmailMessage({
               <button
                 onClick={() => setExpanded(false)}
                 className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground transition-colors"
-                title="Collapse"
+                title="Collapse message"
               >
                 <ChevronUp className="w-4 h-4" />
               </button>
@@ -285,16 +289,16 @@ function EmailMessage({
           </div>
 
           {/* To / CC line */}
-          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-            <span>to</span>
-            <span className="font-medium text-foreground/80">
+          <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 min-w-0">
+            <span className="flex-shrink-0">to</span>
+            <span className="font-mono text-[11px] text-foreground/80 truncate">
               {email.to_address}
             </span>
             {email.cc_address && (
               <>
-                <span className="mx-0.5">·</span>
-                <span>cc</span>
-                <span className="font-medium text-foreground/80">
+                <span className="mx-0.5">&middot;</span>
+                <span className="flex-shrink-0">cc</span>
+                <span className="font-mono text-[11px] text-foreground/80 truncate">
                   {email.cc_address}
                 </span>
               </>
@@ -561,18 +565,11 @@ function InlineReplyComposer({
 
           {/* Body */}
           <div className="px-4 pt-3 pb-1">
-            <textarea
-              ref={textareaRef}
+            <RichTextEditor
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              className="w-full min-h-[120px] bg-transparent text-sm resize-none outline-none placeholder:text-muted-foreground/40 leading-relaxed"
+              onChange={setBody}
               placeholder="Write your reply..."
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
+              minHeight="140px"
             />
           </div>
 
