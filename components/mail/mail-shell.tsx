@@ -149,8 +149,8 @@ export function MailShell({
                 </button>
                 <div className="flex items-center gap-2">
                   <img src="/icon.png" alt="DMail Logo" className="w-6 h-6 object-contain" />
-                  <span className="text-lg font-extrabold tracking-tight text-[#8B1E2D]">
-                    DMail
+                  <span className="text-lg font-extrabold tracking-tight text-foreground flex items-center">
+                    <span className="text-primary">D</span>Mail
                   </span>
                 </div>
               </div>
@@ -211,7 +211,7 @@ export function MailShell({
           {/* Mobile Floating Action Button (FAB) for Compose */}
           <button
             onClick={() => handleCompose()}
-            className="md:hidden fixed bottom-6 right-6 z-40 p-4 rounded-full bg-[#8B1E2D] text-white shadow-xl hover:bg-[#6E1522] active:scale-95 transition-all flex items-center justify-center touch-target"
+            className="md:hidden fixed bottom-6 right-6 z-40 p-4 rounded-full bg-primary text-primary-foreground shadow-xl hover:bg-primary/90 active:scale-95 transition-all flex items-center justify-center touch-target"
             title="Compose New Mail"
             aria-label="Compose New Mail"
           >

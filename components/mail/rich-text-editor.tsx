@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import {
   Bold,
   Italic,
@@ -27,6 +27,16 @@ export function RichTextEditor({
   minHeight = "180px",
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const isTypingRef = useRef(false);
+
+  // Synchronize external value changes (initial load, reply context, form resets)
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
+      if (!isTypingRef.current || value === "" || !editorRef.current.innerHTML) {
+        editorRef.current.innerHTML = value || "";
+      }
+    }
+  }, [value]);
 
   const execCommand = useCallback((command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
@@ -37,7 +47,11 @@ export function RichTextEditor({
 
   const handleInput = () => {
     if (editorRef.current) {
+      isTypingRef.current = true;
       onChange(editorRef.current.innerHTML);
+      setTimeout(() => {
+        isTypingRef.current = false;
+      }, 50);
     }
   };
 
@@ -119,7 +133,6 @@ export function RichTextEditor({
         onInput={handleInput}
         style={{ minHeight }}
         className="px-4 py-3 text-sm outline-none text-foreground leading-relaxed overflow-y-auto"
-        dangerouslySetInnerHTML={{ __html: value }}
         data-placeholder={placeholder}
       />
     </div>

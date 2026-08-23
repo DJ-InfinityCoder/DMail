@@ -16,14 +16,14 @@ import {
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background text-foreground overflow-hidden selection:bg-[#8B1E2D] selection:text-white">
+    <main className="min-h-screen bg-background text-foreground overflow-hidden selection:bg-primary selection:text-primary-foreground">
       {/* Navigation */}
-      <nav className="w-full border-b border-border/40 bg-background/95 sticky top-0 z-50">
+      <nav className="w-full border-b border-border/60 bg-background/90 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex justify-between items-center px-4 sm:px-6 h-16">
           <div className="flex items-center gap-2.5">
             <img src="/icon.png" alt="DMail Logo" className="w-7 h-7 object-contain" />
-            <span className="text-xl font-bold tracking-tight text-[#8B1E2D]">
-              DMail
+            <span className="text-xl font-bold tracking-tight text-foreground flex items-center">
+              <span className="text-primary">D</span>Mail
             </span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -31,13 +31,13 @@ export default function Home() {
             <ThemeToggle variant="ghost" size="icon" />
             <Link
               href="/auth/login"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
             >
               Sign in
             </Link>
             <Link
               href="/auth/login"
-              className="text-sm px-4 py-2 rounded-lg bg-[#8B1E2D] text-white font-medium hover:bg-[#6E1522] transition-colors"
+              className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all shadow-sm"
             >
               Access Portal
             </Link>
@@ -47,14 +47,16 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="max-w-6xl mx-auto px-6 pt-20 pb-16 text-center relative">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-[#8B1E2D]/20 bg-[#8B1E2D]/5 text-xs font-medium text-[#8B1E2D] mb-6">
-          <Sparkles className="w-3.5 h-3.5 text-[#8B1E2D]" />
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-xs font-semibold text-primary mb-6 backdrop-blur-sm shadow-sm">
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
           <span>Custom Domain Email System</span>
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] mb-6 text-foreground">
           Your domain. <br />
-          <span className="text-[#8B1E2D]">Your private inbox.</span> <br />
+          <span className="bg-gradient-to-r from-[#8B1E2D] via-rose-600 to-red-500 dark:from-rose-400 dark:via-rose-500 dark:to-red-400 bg-clip-text text-transparent">
+            Your private inbox.
+          </span> <br />
           Zero complex config.
         </h1>
 
@@ -66,7 +68,7 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             href="/auth/login"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-lg bg-[#8B1E2D] text-white font-medium hover:bg-[#6E1522] transition-colors text-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-md hover:shadow-primary/20 text-sm"
           >
             Launch DMail
             <ArrowRight className="w-4 h-4" />
@@ -81,18 +83,18 @@ export default function Home() {
 
         {/* Clean Mock Inbox Preview */}
         <div className="mt-14 max-w-4xl mx-auto">
-          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-xl">
             {/* Window bar */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-muted/40">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-muted/40">
               <div className="flex gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#8B1E2D]/70" />
-                <div className="w-3 h-3 rounded-full bg-amber-500/70" />
-                <div className="w-3 h-3 rounded-full bg-emerald-500/70" />
+                <div className="w-3 h-3 rounded-full bg-rose-500/80" />
+                <div className="w-3 h-3 rounded-full bg-amber-500/80" />
+                <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
               </div>
-              <div className="px-3 py-0.5 rounded bg-secondary text-xs font-mono text-muted-foreground">
+              <div className="px-3 py-0.5 rounded-md bg-secondary border border-border/50 text-xs font-mono text-muted-foreground">
                 me@yourdomain.com
               </div>
-              <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Active
               </div>
             </div>
@@ -107,13 +109,33 @@ export default function Home() {
               ].map((email, i) => (
                 <div
                   key={i}
-                  className={`flex items-center gap-4 px-5 py-3 transition-colors ${email.unread ? "bg-[#8B1E2D]/[0.03]" : "hover:bg-secondary/40"}`}
+                  className={`flex items-center gap-4 px-5 py-3.5 transition-colors ${
+                    email.unread
+                      ? "bg-primary/[0.04] dark:bg-primary/[0.08]"
+                      : "hover:bg-muted/30"
+                  }`}
                 >
-                  <div className={`w-2 h-2 rounded-full ${email.unread ? "bg-[#8B1E2D]" : "bg-transparent"}`} />
-                  <span className={`text-sm w-44 truncate ${email.unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      email.unread ? "bg-primary shadow-sm" : "bg-transparent"
+                    }`}
+                  />
+                  <span
+                    className={`text-sm w-44 truncate ${
+                      email.unread
+                        ? "font-semibold text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
                     {email.from}
                   </span>
-                  <span className={`text-sm flex-1 truncate ${email.unread ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                  <span
+                    className={`text-sm flex-1 truncate ${
+                      email.unread
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
+                    }`}
+                  >
                     {email.subject}
                   </span>
                   <span className="text-xs text-muted-foreground whitespace-nowrap font-mono">
@@ -172,9 +194,9 @@ export default function Home() {
           ].map((feature, i) => (
             <div
               key={i}
-              className="rounded-xl p-5 border border-border bg-card hover:border-[#8B1E2D]/40 transition-colors shadow-sm"
+              className="rounded-xl p-5 border border-border bg-card hover:border-primary/40 transition-colors shadow-sm"
             >
-              <div className="w-10 h-10 rounded-lg bg-[#8B1E2D]/10 flex items-center justify-center mb-4 text-[#8B1E2D]">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 text-primary">
                 <feature.icon className="w-5 h-5" />
               </div>
               <h3 className="font-semibold text-base mb-1.5 text-foreground">{feature.title}</h3>

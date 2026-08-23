@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -105,6 +105,14 @@ function buildQuotedHtml(email: Email, mode: ReplyMode): string {
   </div>`;
 }
 
+function prepareEmailHtml(html: string): string {
+  if (!html) return "";
+  return html.replace(/<a\s+(?:[^>]*?\s+)?href="([^"]*)"([^>]*)>/gi, (match, href, rest) => {
+    if (rest.includes("target=")) return match;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer"${rest}>`;
+  });
+}
+
 /* ──────────────────────────────────────────────
    Single Email Message (collapsible)
    ────────────────────────────────────────────── */
@@ -127,64 +135,10 @@ function EmailMessage({
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showActions, setShowActions] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  useEffect(() => {
-    if (expanded && iframeRef.current && email.body_html) {
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
-      line-height: 1.7;
-      color: #202124;
-      background: transparent;
-      margin: 0;
-      padding: 0;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      max-width: 100%;
-    }
-    a { color: #8B1E2D; }
-    img { max-width: 100% !important; height: auto !important; border-radius: 6px; }
-    blockquote {
-      border-left: 3px solid #8B1E2D;
-      margin: 8px 0;
-      padding-left: 12px;
-      color: #5f6368;
-    }
-    pre { 
-      background: #f8f9fa; 
-      padding: 12px; 
-      border-radius: 8px; 
-      overflow-x: auto;
-      font-size: 13px;
-      max-width: 100%;
-    }
-    table { border-collapse: collapse; max-width: 100% !important; }
-    td, th { padding: 4px 8px; }
-  </style>
-</head>
-<body>${email.body_html}</body>
-</html>`);
-        doc.close();
-
-        const resizeObserver = new ResizeObserver(() => {
-          if (iframeRef.current && doc.body) {
-            iframeRef.current.style.height = doc.body.scrollHeight + "px";
-          }
-        });
-        if (doc.body) resizeObserver.observe(doc.body);
-        return () => resizeObserver.disconnect();
-      }
-    }
-  }, [expanded, email.body_html]);
+  const sanitizedHtml = useMemo(() => {
+    return email.body_html ? prepareEmailHtml(email.body_html) : "";
+  }, [email.body_html]);
 
   const attachments = Array.isArray(email.attachments) ? email.attachments : [];
   const hasAttachments = attachments.length > 0;
@@ -257,21 +211,21 @@ function EmailMessage({
               >
                 <button
                   onClick={onReply}
-                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-[#8B1E2D] transition-colors"
+                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
                   title="Reply"
                 >
                   <Reply className="w-4 h-4" />
                 </button>
                 <button
                   onClick={onReplyAll}
-                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-[#8B1E2D] transition-colors"
+                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
                   title="Reply All"
                 >
                   <ReplyAll className="w-4 h-4" />
                 </button>
                 <button
                   onClick={onForward}
-                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-[#8B1E2D] transition-colors"
+                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
                   title="Forward"
                 >
                   <Forward className="w-4 h-4" />
@@ -310,11 +264,9 @@ function EmailMessage({
       {/* Message Body */}
       <div className="px-3 sm:px-6 pb-4 sm:pl-[68px]">
         {email.body_html ? (
-          <iframe
-            ref={iframeRef}
-            className="w-full border-0 min-h-[60px]"
-            sandbox="allow-same-origin"
-            title="Email content"
+          <div
+            className="email-rendered-body text-sm leading-relaxed overflow-x-auto max-w-full text-foreground/90 select-text"
+            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
           />
         ) : (
           <pre className="whitespace-pre-wrap font-sans text-sm text-foreground/90 leading-relaxed m-0">
@@ -332,10 +284,10 @@ function EmailMessage({
                   href={att.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border/80 hover:border-[#8B1E2D]/40 bg-card text-xs font-medium text-foreground transition-all group/att"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border/80 hover:border-primary/40 bg-card text-xs font-medium text-foreground transition-all group/att"
                 >
-                  <div className="w-8 h-8 rounded bg-[#8B1E2D]/8 flex items-center justify-center flex-shrink-0">
-                    <Download className="w-4 h-4 text-[#8B1E2D]" />
+                  <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Download className="w-4 h-4 text-primary" />
                   </div>
                   <div className="min-w-0">
                     <div className="truncate max-w-[160px]">
@@ -500,7 +452,7 @@ function InlineReplyComposer({
       {/* Composer Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-secondary/30">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <ModeIcon className="w-4 h-4 text-[#8B1E2D]" />
+          <ModeIcon className="w-4 h-4 text-primary" />
           {modeLabel}
         </div>
         <div className="flex items-center gap-1">
@@ -540,7 +492,7 @@ function InlineReplyComposer({
             {!showCc && (
               <button
                 onClick={() => setShowCc(true)}
-                className="text-[11px] text-muted-foreground hover:text-[#8B1E2D] transition-colors font-medium"
+                className="text-[11px] text-muted-foreground hover:text-primary transition-colors font-medium"
               >
                 Cc
               </button>
@@ -588,7 +540,7 @@ function InlineReplyComposer({
             </button>
             {showQuoted && (
               <div
-                className="mt-2 pl-3 border-l-2 border-[#8B1E2D]/30 text-xs text-muted-foreground max-h-[200px] overflow-y-auto"
+                className="mt-2 pl-3 border-l-2 border-primary/30 text-xs text-muted-foreground max-h-[200px] overflow-y-auto"
                 dangerouslySetInnerHTML={{
                   __html:
                     targetEmail.body_html ||
@@ -623,7 +575,7 @@ function InlineReplyComposer({
               <button
                 onClick={handleSend}
                 disabled={sending || !to.trim()}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#8B1E2D] text-white text-xs font-semibold hover:bg-[#6E1522] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 {sending ? (
                   <>
@@ -731,7 +683,7 @@ export function EmailThread({
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-secondary/60 hover:bg-secondary text-foreground text-xs font-medium transition-colors"
             title="Back to list"
           >
-            <ArrowLeft className="w-4 h-4 text-[#8B1E2D]" />
+            <ArrowLeft className="w-4 h-4 text-primary" />
             <span>Back</span>
           </button>
         </div>
@@ -778,7 +730,7 @@ export function EmailThread({
             {currentEmail.labels.map((label) => (
               <span
                 key={label}
-                className="px-2 py-0.5 rounded-full bg-[#8B1E2D]/10 text-[#8B1E2D] text-[10px] font-semibold"
+                className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold"
               >
                 {label}
               </span>
@@ -827,7 +779,7 @@ export function EmailThread({
         <div className="px-6 py-3 border-t border-border bg-card flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => openInlineReply(lastEmail, "reply")}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#8B1E2D] text-white text-xs font-semibold hover:bg-[#6E1522] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm"
           >
             <Reply className="w-3.5 h-3.5" />
             Reply
@@ -836,14 +788,14 @@ export function EmailThread({
             onClick={() => openInlineReply(lastEmail, "replyAll")}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-secondary text-xs font-semibold text-foreground transition-colors"
           >
-            <ReplyAll className="w-3.5 h-3.5 text-[#8B1E2D]" />
+            <ReplyAll className="w-3.5 h-3.5 text-primary" />
             Reply All
           </button>
           <button
             onClick={() => openInlineReply(lastEmail, "forward")}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-secondary text-xs font-semibold text-foreground transition-colors"
           >
-            <Forward className="w-3.5 h-3.5 text-[#8B1E2D]" />
+            <Forward className="w-3.5 h-3.5 text-primary" />
             Forward
           </button>
         </div>

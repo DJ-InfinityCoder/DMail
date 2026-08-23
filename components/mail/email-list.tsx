@@ -172,6 +172,7 @@ function SwipableEmailRow({
   onMarkReadToggle: (id: string, isRead: boolean) => void;
   onSnooze?: (id: string) => void;
 }) {
+  const router = useRouter();
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const isSwiping = useRef(false);
@@ -241,6 +242,9 @@ function SwipableEmailRow({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={() => onOpenEmail(email)}
+        onMouseEnter={() => {
+          router.prefetch(`/mail/${folder}/${email.id}`);
+        }}
         style={{
           transform: `translateX(${swipeOffset}px)`,
           transition: swipeOffset === 0 ? "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
@@ -260,7 +264,7 @@ function SwipableEmailRow({
           title={isSelected ? "Deselect" : "Select"}
         >
           {isSelected ? (
-            <CheckSquare className="w-4 h-4 text-[#8B1E2D]" />
+            <CheckSquare className="w-4 h-4 text-primary" />
           ) : (
             <Square className="w-4 h-4 text-muted-foreground/50 hover:text-muted-foreground" />
           )}
@@ -282,7 +286,7 @@ function SwipableEmailRow({
             />
           </button>
           {!email.is_read && (
-            <span className="w-2 h-2 rounded-full bg-[#8B1E2D] shadow-sm pulse-dot" title="Unread" />
+            <span className="w-2 h-2 rounded-full bg-primary shadow-sm pulse-dot" title="Unread" />
           )}
         </div>
 
@@ -351,7 +355,7 @@ function SwipableEmailRow({
                 e.stopPropagation();
                 onSnooze(email.id);
               }}
-              className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-[#8B1E2D] transition-colors"
+              className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
               title="Snooze"
             >
               <Clock className="w-3.5 h-3.5" />
@@ -557,13 +561,13 @@ export function EmailList({
   };
 
   const openEmail = useCallback(
-    async (email: Email) => {
+    (email: Email) => {
       setSelectedId(email.id);
       if (!email.is_read) {
         setEmails((prev) =>
           prev.map((em) => (em.id === email.id ? { ...em, is_read: true } : em))
         );
-        await supabase.from("emails").update({ is_read: true }).eq("id", email.id);
+        supabase.from("emails").update({ is_read: true }).eq("id", email.id).then();
       }
       router.push(`/mail/${folder}/${email.id}`);
     },
@@ -582,7 +586,7 @@ export function EmailList({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSelectAll}
-                className="p-1 rounded hover:bg-secondary text-[#8B1E2D] font-bold text-xs flex items-center gap-1.5"
+                className="p-1 rounded hover:bg-secondary text-primary font-bold text-xs flex items-center gap-1.5"
               >
                 <CheckSquare className="w-4 h-4" />
                 <span>{selectedEmailIds.length} Selected</span>
@@ -639,7 +643,7 @@ export function EmailList({
                 className="px-2 py-1.5 rounded-lg hover:bg-secondary/70 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-xs border border-border/40 bg-card/60"
                 title="Search (Ctrl+K)"
               >
-                <Search className="w-3.5 h-3.5 text-[#8B1E2D]" />
+                <Search className="w-3.5 h-3.5 text-primary" />
                 <span className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-sans font-semibold text-muted-foreground">
                   <kbd className="px-1 py-0.5 rounded bg-secondary border border-border text-[9px] font-mono leading-none">Ctrl</kbd>
                   <span className="text-[9px]">+</span>
@@ -675,7 +679,7 @@ export function EmailList({
       {pullDistance > 0 && (
         <div
           style={{ height: `${pullDistance}px` }}
-          className="flex items-center justify-center bg-primary/5 border-b border-primary/20 text-[#8B1E2D] overflow-hidden transition-all"
+          className="flex items-center justify-center bg-primary/5 border-b border-primary/20 text-primary overflow-hidden transition-all"
         >
           <RefreshCw className={`w-4 h-4 ${pullDistance > 60 ? "animate-spin" : ""}`} />
         </div>
@@ -693,7 +697,7 @@ export function EmailList({
           <EmailListSkeleton density={density} />
         ) : emails.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-20 px-4 text-center animate-fade-in">
-            <div className="w-14 h-14 rounded-2xl bg-[#8B1E2D]/10 text-[#8B1E2D] flex items-center justify-center mb-4 shadow-sm">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4 shadow-sm">
               <EmptyStateIcon className="w-7 h-7" />
             </div>
             <h3 className="text-base font-bold text-foreground mb-1">

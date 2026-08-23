@@ -21,22 +21,22 @@ export function ResizableSplitPane({
   storageKey = "dmail_split_pane_width",
   mobileShowRight = false,
 }: ResizableSplitPaneProps) {
-  const [width, setWidth] = useState<number>(defaultWidth);
+  const [width, setWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed) && parsed >= minWidth && parsed <= maxWidth) {
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+    return defaultWidth;
+  });
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Load saved width from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= minWidth && parsed <= maxWidth) {
-          setWidth(parsed);
-        }
-      }
-    }
-  }, [storageKey, minWidth, maxWidth]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -120,7 +120,7 @@ export function ResizableSplitPane({
         className={`
           hidden md:flex w-1.5 h-full cursor-col-resize flex-shrink-0 items-center justify-center
           transition-colors duration-150 relative z-30 group select-none
-          ${isDragging ? "bg-[#8B1E2D]" : "bg-border/40 hover:bg-[#8B1E2D]/60"}
+          ${isDragging ? "bg-primary" : "bg-border/40 hover:bg-primary/60"}
         `}
         title="Drag to adjust column width"
       >

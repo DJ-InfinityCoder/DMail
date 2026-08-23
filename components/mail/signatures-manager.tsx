@@ -139,7 +139,7 @@ export function SignaturesManager({ mailboxes }: SignaturesManagerProps) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#8B1E2D] text-white text-xs font-bold hover:bg-[#6E1522] transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm"
           >
             {savedSuccess ? (
               <>

@@ -71,8 +71,8 @@ export function Sidebar({
       <div className="px-4 h-14 flex items-center justify-between border-b border-border/80 min-w-0">
         <div className="flex items-center gap-2.5">
           <img src="/icon.png" alt="DMail Logo" className="w-7 h-7 object-contain" />
-          <span className="text-base font-bold tracking-tight text-[#8B1E2D]">
-            DMail
+          <span className="text-base font-bold tracking-tight text-foreground flex items-center">
+            <span className="text-primary">D</span>Mail
           </span>
         </div>
         <span className="text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded bg-secondary text-muted-foreground">
@@ -87,7 +87,7 @@ export function Sidebar({
             onCompose();
             onNavigate?.();
           }}
-          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#8B1E2D] text-white text-sm font-semibold hover:bg-[#6E1522] transition-colors shadow-sm"
+          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
           <span>Compose</span>
@@ -112,15 +112,15 @@ export function Sidebar({
                   flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
                   ${
                     isActive
-                      ? "bg-[#8B1E2D]/10 text-[#8B1E2D] font-bold"
+                      ? "bg-primary/10 text-primary font-bold"
                       : "text-foreground/80 hover:bg-secondary hover:text-foreground"
                   }
                 `}
               >
-                <folder.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-[#8B1E2D]" : "text-muted-foreground"}`} />
+                <folder.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
                 <span className="flex-1">{folder.name}</span>
                 {showBadge && (
-                  <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-[#8B1E2D] text-white min-w-[20px] text-center shadow-sm">
+                  <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-primary text-primary-foreground min-w-[20px] text-center shadow-sm">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
@@ -176,7 +176,7 @@ export function Sidebar({
             flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
             ${
               pathname.startsWith("/mail/settings")
-                ? "bg-[#8B1E2D]/10 text-[#8B1E2D] font-bold"
+                ? "bg-primary/10 text-primary font-bold"
                 : "text-foreground/80 hover:bg-secondary hover:text-foreground"
             }
           `}

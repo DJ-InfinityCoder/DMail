@@ -139,7 +139,7 @@ export function NotificationSettings() {
           className={`text-xs font-medium gap-2 ${
             isEnabled && isGranted
               ? "bg-secondary text-foreground hover:bg-secondary/80"
-              : "bg-[#8B1E2D] hover:bg-[#6E1522] text-white"
+              : "bg-primary hover:bg-primary/90 text-primary-foreground"
           }`}
         >
           {isToggling ? (

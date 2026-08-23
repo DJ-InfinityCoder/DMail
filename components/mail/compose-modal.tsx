@@ -147,7 +147,7 @@ function AddressPillInput({
               key={addr}
               className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-secondary border border-border/60 text-xs font-medium text-foreground"
             >
-              <span className="w-4 h-4 rounded-full bg-[#8B1E2D]/10 text-[#8B1E2D] text-[9px] font-bold flex items-center justify-center">
+              <span className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">
                 {addr.charAt(0).toUpperCase()}
               </span>
               <span>{addr}</span>
@@ -205,18 +205,18 @@ function AddressPillInput({
                 onMouseEnter={() => setHighlightedIndex(i)}
                 className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 ${
                   isHighlighted
-                    ? "bg-[#8B1E2D]/10 text-foreground font-medium"
+                    ? "bg-primary/10 text-foreground font-medium"
                     : "text-foreground/80 hover:bg-secondary/50"
                 }`}
               >
-                <div className="w-6 h-6 rounded-full bg-[#8B1E2D]/10 text-[#8B1E2D] flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                   {suggestion.charAt(0).toUpperCase()}
                 </div>
                 <span className="truncate">
                   {idx >= 0 ? (
                     <>
                       {suggestion.slice(0, idx)}
-                      <span className="font-semibold text-[#8B1E2D]">
+                      <span className="font-semibold text-primary">
                         {suggestion.slice(idx, idx + inputValue.length)}
                       </span>
                       {suggestion.slice(idx + inputValue.length)}
@@ -303,6 +303,7 @@ export function ComposeModal({
 
     setError(null);
     setUndoSendVisible(true);
+    onOpenChange(false);
   };
 
   // Executed after 5-second countdown finishes without Undo click
@@ -340,9 +341,9 @@ export function ComposeModal({
       });
 
       resetForm();
-      onOpenChange(false);
     } catch (err: any) {
       setError(err.message);
+      onOpenChange(true);
     } finally {
       setSending(false);
     }
@@ -350,6 +351,7 @@ export function ComposeModal({
 
   const handleUndoSend = () => {
     setUndoSendVisible(false);
+    onOpenChange(true);
   };
 
   const resetForm = () => {
@@ -386,7 +388,7 @@ export function ComposeModal({
     }
   };
 
-  if (!open) return null;
+  if (!open && !undoSendVisible) return null;
 
   return (
     <>
@@ -398,11 +400,12 @@ export function ComposeModal({
         durationMs={5000}
       />
 
-      <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-        <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
-          onClick={handleClose}
-        />
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+            onClick={handleClose}
+          />
 
         {/* Modal Container — mobile sheet style */}
         <div
@@ -411,7 +414,7 @@ export function ComposeModal({
           onDrop={handleDrop}
           className={`
             relative w-full max-w-2xl sm:mx-4 glass rounded-t-2xl sm:rounded-xl shadow-2xl animate-slide-in-up overflow-hidden h-[90vh] sm:h-auto flex flex-col z-10 transition-all
-            ${isDragOver ? "ring-2 ring-[#8B1E2D] bg-[#8B1E2D]/5" : ""}
+            ${isDragOver ? "ring-2 ring-primary bg-primary/5" : ""}
           `}
         >
           {/* Mobile Sheet Grabber Bar */}
@@ -473,7 +476,7 @@ export function ComposeModal({
             <div className="px-4 py-1 border-b border-border/20">
               <button
                 onClick={() => setShowCcBcc(true)}
-                className="text-[10px] font-semibold text-muted-foreground hover:text-[#8B1E2D] transition-colors"
+                className="text-[10px] font-semibold text-muted-foreground hover:text-primary transition-colors"
               >
                 + CC / BCC
               </button>
@@ -528,7 +531,7 @@ export function ComposeModal({
                   key={i}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary border border-border/60 text-xs font-medium"
                 >
-                  <Paperclip className="w-3.5 h-3.5 text-[#8B1E2D]" />
+                  <Paperclip className="w-3.5 h-3.5 text-primary" />
                   <span className="truncate max-w-[140px]">{file.name}</span>
                   <button
                     onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
@@ -575,7 +578,7 @@ export function ComposeModal({
             <button
               onClick={initiateSend}
               disabled={sending || to.length === 0 || undoSendVisible}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#8B1E2D] text-white text-xs font-bold hover:bg-[#6E1522] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               {sending ? (
                 <>
@@ -592,6 +595,7 @@ export function ComposeModal({
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }

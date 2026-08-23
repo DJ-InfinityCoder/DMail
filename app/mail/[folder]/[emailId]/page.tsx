@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { EmailThread } from "@/components/mail/email-thread";
 import { EmailList } from "@/components/mail/email-list";
 import { ResizableSplitPane } from "@/components/mail/resizable-split-pane";
+import type { Email } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function EmailDetailPage({ params }: EmailDetailPageProps) 
 
   if (!org) redirect("/auth/login");
 
-  // Fetch list of emails for folder left-pane
+  // Fetch folder list and selected email in PARALLEL
   let folderQuery = supabase
     .from("emails")
     .select("*")
@@ -41,27 +42,26 @@ export default async function EmailDetailPage({ params }: EmailDetailPageProps) 
     folderQuery = folderQuery.eq("folder", folder);
   }
 
-  const { data: folderEmails } = await folderQuery;
+  const [folderResult, emailResult] = await Promise.all([
+    folderQuery,
+    supabase.from("emails").select("*").eq("id", emailId).single(),
+  ]);
 
-  // Fetch the selected email
-  const { data: email, error } = await supabase
-    .from("emails")
-    .select("*")
-    .eq("id", emailId)
-    .single();
+  const email = emailResult.data;
+  if (emailResult.error || !email) notFound();
 
-  if (error || !email) notFound();
-
-  // Fetch thread emails
+  // Fetch thread emails if part of a reply chain
   let threadEmails = [email];
 
-  if (email.message_id) {
+  if (email.message_id || email.in_reply_to) {
+    const filter = email.in_reply_to
+      ? `in_reply_to.eq.${email.message_id},message_id.eq.${email.in_reply_to}`
+      : `in_reply_to.eq.${email.message_id}`;
+
     const { data: related } = await supabase
       .from("emails")
       .select("*")
-      .or(
-        `in_reply_to.eq.${email.message_id},message_id.eq.${email.in_reply_to ?? ""}`
-      )
+      .or(filter)
       .neq("id", email.id)
       .order("created_at", { ascending: true });
 
@@ -74,17 +74,14 @@ export default async function EmailDetailPage({ params }: EmailDetailPageProps) 
     }
   }
 
-  // Mark as read
+  // Non-blocking mark-as-read (fire-and-forget)
   if (!email.is_read) {
-    await supabase
-      .from("emails")
-      .update({ is_read: true })
-      .eq("id", emailId);
+    supabase.from("emails").update({ is_read: true }).eq("id", emailId).then();
   }
 
   const leftPane = (
     <EmailList
-      emails={folderEmails ?? []}
+      emails={folderResult.data ?? []}
       folder={folder}
       orgId={org.id}
     />

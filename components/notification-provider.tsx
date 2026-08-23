@@ -257,7 +257,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
       {/* Floating In-App Visual Notification Popup Banner */}
       {activeToast && (
-        <div className="fixed top-4 right-4 z-[9999] max-w-sm w-full bg-card/95 backdrop-blur-md border border-primary/40 rounded-xl shadow-2xl p-4 animate-slide-in-up flex items-start gap-3">
+        <div className="fixed top-4 right-4 z-[9999] max-w-sm w-full bg-card/95 backdrop-blur-md border border-primary/40 rounded-xl shadow-sm p-4 animate-slide-in-up flex items-start gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
             <Bell className="w-5 h-5 text-primary" />
           </div>

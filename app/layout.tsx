@@ -49,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased selection:bg-[#8B1E2D] selection:text-white">
+      <body className="antialiased selection:bg-primary selection:text-primary-foreground">
         <Providers>{children}</Providers>
       </body>
     </html>

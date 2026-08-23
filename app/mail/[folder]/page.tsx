@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { EmailList } from "@/components/mail/email-list";
 import { ResizableSplitPane } from "@/components/mail/resizable-split-pane";
 import { Mail } from "lucide-react";
+import type { Email } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +67,7 @@ export default async function FolderPage({ params }: FolderPageProps) {
 
   const rightPane = (
     <div className="flex flex-col items-center justify-center h-full bg-background/50 text-muted-foreground p-8 text-center animate-fade-in border-l border-border/20">
-      <div className="w-16 h-16 rounded-2xl bg-[#8B1E2D]/10 text-[#8B1E2D] flex items-center justify-center mb-4 shadow-sm">
+      <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4 shadow-sm">
         <Mail className="w-8 h-8 stroke-[1.75]" />
       </div>
       <h3 className="text-base font-bold text-foreground mb-1">Select an email to read</h3>

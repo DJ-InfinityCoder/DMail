@@ -126,7 +126,7 @@ export function GlobalSearchModal({ open, onOpenChange, orgId }: GlobalSearchMod
       <div className="relative w-full max-w-xl mx-4 glass-card shadow-2xl overflow-hidden animate-slide-in-up z-10 flex flex-col max-h-[80vh]">
         {/* Search Bar Input */}
         <div className="flex items-center gap-3 px-4 h-14 border-b border-border/50 bg-card">
-          <Search className="w-5 h-5 text-[#8B1E2D] flex-shrink-0" />
+          <Search className="w-5 h-5 text-primary flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -159,7 +159,7 @@ export function GlobalSearchModal({ open, onOpenChange, orgId }: GlobalSearchMod
               onClick={() => addOperator(op.value)}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-secondary/80 text-xs font-mono text-foreground/90 transition-colors whitespace-nowrap"
             >
-              <op.icon className="w-3 h-3 text-[#8B1E2D]" />
+              <op.icon className="w-3 h-3 text-primary" />
               <span>{op.label}</span>
             </button>
           ))}
@@ -170,7 +170,7 @@ export function GlobalSearchModal({ open, onOpenChange, orgId }: GlobalSearchMod
           {!query && recentSearches.length > 0 && (
             <div className="p-4">
               <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-2">
-                <History className="w-3.5 h-3.5 text-[#8B1E2D]" />
+                <History className="w-3.5 h-3.5 text-primary" />
                 <span>Recent Searches</span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -202,7 +202,7 @@ export function GlobalSearchModal({ open, onOpenChange, orgId }: GlobalSearchMod
               onClick={() => handleSelectEmail(email)}
               className="flex items-start gap-3 px-4 py-3 hover:bg-secondary/50 cursor-pointer transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-[#8B1E2D]/10 text-[#8B1E2D] flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
                 {email.from_address.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">

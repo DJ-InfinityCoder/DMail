@@ -36,7 +36,7 @@ export function PwaInstallButton({
       className={`gap-2 ${className}`}
       title={isInstallable ? "Install DMail as App on your desktop/phone" : "PWA App Ready"}
     >
-      <Download className="w-4 h-4 text-[#8B1E2D]" />
+      <Download className="w-4 h-4 text-primary" />
       {showText && <span>{isInstallable ? "Install App" : "DMail App"}</span>}
     </Button>
   );
