@@ -16,7 +16,7 @@ export default async function MailLayout({
     redirect("/auth/login");
   }
 
-  // Fetch user's organization
+  // Fetch org first (needed for scoping all other queries)
   const { data: org } = await supabase
     .from("organizations")
     .select("*")
@@ -27,46 +27,47 @@ export default async function MailLayout({
     redirect("/auth/login");
   }
 
-  // Fetch mailboxes with domain info
-  const { data: rawMailboxes } = await supabase
-    .from("mailboxes")
-    .select(`
-      id,
-      address,
-      display_name,
-      is_active,
-      created_at,
-      domain_id,
-      org_id,
-      domains:domain_id (
-        domain_name,
-        send_enabled
-      )
-    `)
-    .eq("org_id", org.id)
-    .eq("is_active", true);
+  // Fetch mailboxes + unread count IN PARALLEL (was sequential before)
+  const [mailboxesResult, unreadResult] = await Promise.all([
+    supabase
+      .from("mailboxes")
+      .select(`
+        id,
+        address,
+        display_name,
+        is_active,
+        created_at,
+        domain_id,
+        org_id,
+        domains:domain_id (
+          domain_name,
+          send_enabled
+        )
+      `)
+      .eq("org_id", org.id)
+      .eq("is_active", true),
+    supabase
+      .from("emails")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", org.id)
+      .eq("folder", "inbox")
+      .eq("is_read", false),
+  ]);
 
-  const mailboxes = (rawMailboxes ?? []).map((mb) => ({
+  const mailboxes = (mailboxesResult.data ?? []).map((mb) => ({
     ...mb,
     domains: Array.isArray(mb.domains) ? mb.domains[0] ?? null : mb.domains,
   }));
-
-  // Fetch unread count
-  const { count: unreadCount } = await supabase
-    .from("emails")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", org.id)
-    .eq("folder", "inbox")
-    .eq("is_read", false);
 
   return (
     <MailShell
       user={user}
       org={org}
       mailboxes={mailboxes ?? []}
-      unreadCount={unreadCount ?? 0}
+      unreadCount={unreadResult.count ?? 0}
     >
       {children}
     </MailShell>
   );
 }
+

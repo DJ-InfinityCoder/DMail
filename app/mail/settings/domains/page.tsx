@@ -18,6 +18,7 @@ export default async function DomainsSettingsPage() {
 
   if (!org) redirect("/auth/login");
 
+  // Fetch domains (org already fetched above, no further parallelization needed)
   const { data: domains } = await supabase
     .from("domains")
     .select("*")
@@ -32,3 +33,4 @@ export default async function DomainsSettingsPage() {
     </div>
   );
 }
+

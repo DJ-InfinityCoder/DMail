@@ -22,22 +22,28 @@ export default async function SettingsPage() {
 
   if (!org) redirect("/auth/login");
 
-  const { count: domainCount } = await supabase
-    .from("domains")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", org.id);
+  // Fetch all settings data IN PARALLEL (was 4 sequential queries before)
+  const [domainsResult, mailboxesResult, quotaResult] = await Promise.all([
+    supabase
+      .from("domains")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", org.id),
+    supabase
+      .from("mailboxes")
+      .select("*")
+      .eq("org_id", org.id)
+      .eq("is_active", true),
+    supabase
+      .from("org_send_quotas")
+      .select("*")
+      .eq("org_id", org.id)
+      .single(),
+  ]);
 
-  const { data: mailboxesData, count: mailboxCount } = await supabase
-    .from("mailboxes")
-    .select("*")
-    .eq("org_id", org.id)
-    .eq("is_active", true);
-
-  const { data: quota } = await supabase
-    .from("org_send_quotas")
-    .select("*")
-    .eq("org_id", org.id)
-    .single();
+  const domainCount = domainsResult.count;
+  const mailboxesData = mailboxesResult.data;
+  const mailboxCount = mailboxesResult.data?.length ?? 0;
+  const quota = quotaResult.data;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -114,3 +120,4 @@ export default async function SettingsPage() {
     </div>
   );
 }
+

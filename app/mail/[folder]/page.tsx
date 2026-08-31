@@ -28,6 +28,8 @@ export default async function FolderPage({ params }: FolderPageProps) {
   }
 
   const supabase = await createClient();
+
+  // Fetch user + org in parallel
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -42,20 +44,20 @@ export default async function FolderPage({ params }: FolderPageProps) {
 
   if (!org) redirect("/auth/login");
 
-  let query = supabase
+  // Build email query based on folder
+  const baseQuery = supabase
     .from("emails")
     .select("*")
     .eq("org_id", org.id)
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (folder === "starred") {
-    query = query.eq("is_starred", true);
-  } else {
-    query = query.eq("folder", folder);
-  }
+  const emailQuery =
+    folder === "starred"
+      ? baseQuery.eq("is_starred", true)
+      : baseQuery.eq("folder", folder);
 
-  const { data: emails } = await query;
+  const { data: emails } = await emailQuery;
 
   const leftPane = (
     <EmailList
@@ -87,3 +89,4 @@ export default async function FolderPage({ params }: FolderPageProps) {
     />
   );
 }
+
