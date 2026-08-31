@@ -367,6 +367,9 @@ function SwipableEmailRow({
   );
 }
 
+import { useQueryClient } from "@tanstack/react-query";
+import { useFolderEmails } from "@/lib/hooks/use-emails-query";
+
 /* ──────────────────────────────────────────────
    Main EmailList Component
    ────────────────────────────────────────────── */
@@ -377,13 +380,21 @@ export function EmailList({
   onOpenSearch,
   onSnoozeEmail,
 }: EmailListProps) {
-  const [emails, setEmails] = useState(initialEmails);
+  const queryClient = useQueryClient();
+  const { data: cachedEmails = initialEmails, refetch, isFetching } = useFolderEmails(
+    folder,
+    orgId,
+    initialEmails
+  );
+
+  const [emails, setEmails] = useState<Email[]>(cachedEmails);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
   const [pullDistance, setPullDistance] = useState(0);
+
+  const isLoading = isFetching && emails.length === 0;
 
   const touchContainerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number | null>(null);
@@ -392,12 +403,21 @@ export function EmailList({
   const { openSearch } = useMailContext();
   const handleSearchClick = onOpenSearch ?? openSearch;
 
+  // Sync state when cachedEmails updates
   useEffect(() => {
-    setEmails(initialEmails);
-    setSelectedEmailIds([]);
-  }, [initialEmails]);
+    if (cachedEmails) {
+      setEmails(cachedEmails);
+    }
+  }, [cachedEmails]);
 
-  // Realtime postgres changes subscription
+  // Sync initial emails into query cache immediately
+  useEffect(() => {
+    if (initialEmails && initialEmails.length > 0) {
+      queryClient.setQueryData(["emails", orgId, folder], initialEmails);
+    }
+  }, [initialEmails, orgId, folder, queryClient]);
+
+  // Realtime postgres changes subscription synced directly with query cache
   useEffect(() => {
     const client = createClient();
     const channelId = `email-list-${folder}-${orgId}-${Math.random().toString(36).substring(2, 7)}`;
@@ -418,6 +438,10 @@ export function EmailList({
               folder === "starred" ? newEmail.is_starred : newEmail.folder === folder;
 
             if (matchesFolder) {
+              queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) => {
+                if (prev.some((e) => e.id === newEmail.id)) return prev;
+                return [newEmail, ...prev];
+              });
               setEmails((prev) => {
                 if (prev.some((e) => e.id === newEmail.id)) return prev;
                 return [newEmail, ...prev];
@@ -427,6 +451,17 @@ export function EmailList({
             const updatedEmail = payload.new as Email;
             const matchesFolder =
               folder === "starred" ? updatedEmail.is_starred : updatedEmail.folder === folder;
+
+            queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) => {
+              if (matchesFolder) {
+                const exists = prev.some((e) => e.id === updatedEmail.id);
+                return exists
+                  ? prev.map((e) => (e.id === updatedEmail.id ? updatedEmail : e))
+                  : [updatedEmail, ...prev];
+              } else {
+                return prev.filter((e) => e.id !== updatedEmail.id);
+              }
+            });
 
             setEmails((prev) => {
               if (matchesFolder) {
@@ -440,6 +475,9 @@ export function EmailList({
             });
           } else if (payload.eventType === "DELETE") {
             const oldEmail = payload.old as { id: string };
+            queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
+              prev.filter((e) => e.id !== oldEmail.id)
+            );
             setEmails((prev) => prev.filter((e) => e.id !== oldEmail.id));
           }
         }
@@ -449,13 +487,13 @@ export function EmailList({
     return () => {
       client.removeChannel(channel);
     };
-  }, [orgId, folder]);
+  }, [orgId, folder, queryClient]);
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
-    router.refresh();
-    setTimeout(() => setIsRefreshing(false), 500);
-  }, [router]);
+    await refetch();
+    setTimeout(() => setIsRefreshing(false), 300);
+  }, [refetch]);
 
   // Touch Pull-to-refresh
   const handleTouchStartPull = (e: React.TouchEvent) => {
@@ -485,40 +523,54 @@ export function EmailList({
   const toggleStar = useCallback(
     async (e: React.MouseEvent, emailId: string, currentStarred: boolean) => {
       e.stopPropagation();
-      setEmails((prev) =>
-        prev.map((em) => (em.id === emailId ? { ...em, is_starred: !currentStarred } : em))
+      const updatedStarred = !currentStarred;
+      queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
+        prev.map((em) => (em.id === emailId ? { ...em, is_starred: updatedStarred } : em))
       );
-      await supabase.from("emails").update({ is_starred: !currentStarred }).eq("id", emailId);
+      setEmails((prev) =>
+        prev.map((em) => (em.id === emailId ? { ...em, is_starred: updatedStarred } : em))
+      );
+      await supabase.from("emails").update({ is_starred: updatedStarred }).eq("id", emailId);
     },
-    [supabase]
+    [supabase, orgId, folder, queryClient]
   );
 
   const archiveEmail = useCallback(
     async (e: React.MouseEvent, emailId: string) => {
       e.stopPropagation();
+      queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
+        prev.filter((em) => em.id !== emailId)
+      );
       setEmails((prev) => prev.filter((em) => em.id !== emailId));
       await supabase.from("emails").update({ folder: "archive" }).eq("id", emailId);
     },
-    [supabase]
+    [supabase, orgId, folder, queryClient]
   );
 
   const trashEmail = useCallback(
     async (e: React.MouseEvent, emailId: string) => {
       e.stopPropagation();
+      queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
+        prev.filter((em) => em.id !== emailId)
+      );
       setEmails((prev) => prev.filter((em) => em.id !== emailId));
       await supabase.from("emails").update({ folder: "trash" }).eq("id", emailId);
     },
-    [supabase]
+    [supabase, orgId, folder, queryClient]
   );
 
   const markReadToggle = useCallback(
     async (emailId: string, isRead: boolean) => {
-      setEmails((prev) =>
-        prev.map((em) => (em.id === emailId ? { ...em, is_read: !isRead } : em))
+      const updatedRead = !isRead;
+      queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
+        prev.map((em) => (em.id === emailId ? { ...em, is_read: updatedRead } : em))
       );
-      await supabase.from("emails").update({ is_read: !isRead }).eq("id", emailId);
+      setEmails((prev) =>
+        prev.map((em) => (em.id === emailId ? { ...em, is_read: updatedRead } : em))
+      );
+      await supabase.from("emails").update({ is_read: updatedRead }).eq("id", emailId);
     },
-    [supabase]
+    [supabase, orgId, folder, queryClient]
   );
 
   const handleSelectToggle = (e: React.MouseEvent, emailId: string) => {
@@ -539,6 +591,9 @@ export function EmailList({
   // Batch actions
   const handleBatchArchive = async () => {
     const ids = selectedEmailIds;
+    queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
+      prev.filter((e) => !ids.includes(e.id))
+    );
     setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
     setSelectedEmailIds([]);
     await supabase.from("emails").update({ folder: "archive" }).in("id", ids);
@@ -546,6 +601,9 @@ export function EmailList({
 
   const handleBatchDelete = async () => {
     const ids = selectedEmailIds;
+    queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
+      prev.filter((e) => !ids.includes(e.id))
+    );
     setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
     setSelectedEmailIds([]);
     await supabase.from("emails").update({ folder: "trash" }).in("id", ids);
@@ -553,6 +611,9 @@ export function EmailList({
 
   const handleBatchMarkRead = async (isRead: boolean) => {
     const ids = selectedEmailIds;
+    queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
+      prev.map((e) => (ids.includes(e.id) ? { ...e, is_read: isRead } : e))
+    );
     setEmails((prev) =>
       prev.map((e) => (ids.includes(e.id) ? { ...e, is_read: isRead } : e))
     );
@@ -564,6 +625,9 @@ export function EmailList({
     (email: Email) => {
       setSelectedId(email.id);
       if (!email.is_read) {
+        queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
+          prev.map((em) => (em.id === email.id ? { ...em, is_read: true } : em))
+        );
         setEmails((prev) =>
           prev.map((em) => (em.id === email.id ? { ...em, is_read: true } : em))
         );
@@ -571,7 +635,7 @@ export function EmailList({
       }
       router.push(`/mail/${folder}/${email.id}`);
     },
-    [supabase, folder, router]
+    [supabase, folder, router, orgId, queryClient]
   );
 
   const EmptyStateIcon = folderEmptyStates[folder]?.icon ?? Inbox;

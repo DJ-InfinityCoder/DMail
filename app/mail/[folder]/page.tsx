@@ -5,8 +5,6 @@ import { ResizableSplitPane } from "@/components/mail/resizable-split-pane";
 import { Mail } from "lucide-react";
 import type { Email } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-
 interface FolderPageProps {
   params: Promise<{ folder: string }>;
 }

@@ -5,6 +5,72 @@ interface EmailRouteParams {
   params: Promise<{ id: string }>;
 }
 
+// GET: Fetch email detail and associated thread messages
+export async function GET(request: NextRequest, { params }: EmailRouteParams) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("id")
+    .eq("owner_id", user.id)
+    .single();
+
+  if (!org) {
+    return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+  }
+
+  const { data: email, error } = await supabase
+    .from("emails")
+    .select("*")
+    .eq("id", id)
+    .eq("org_id", org.id)
+    .single();
+
+  if (error || !email) {
+    return NextResponse.json({ error: "Email not found" }, { status: 404 });
+  }
+
+  let threadEmails = [email];
+  if (email.message_id || email.in_reply_to) {
+    let relatedQuery = supabase
+      .from("emails")
+      .select("*")
+      .eq("org_id", org.id)
+      .neq("id", email.id)
+      .order("created_at", { ascending: true });
+
+    if (email.in_reply_to && email.message_id) {
+      relatedQuery = relatedQuery.or(
+        `in_reply_to.eq."${email.message_id}",message_id.eq."${email.in_reply_to}"`
+      );
+    } else if (email.message_id) {
+      relatedQuery = relatedQuery.eq("in_reply_to", email.message_id);
+    } else if (email.in_reply_to) {
+      relatedQuery = relatedQuery.eq("message_id", email.in_reply_to);
+    }
+
+    const { data: related } = await relatedQuery;
+
+    if (related && related.length > 0) {
+      threadEmails = [...related, email].sort(
+        (a, b) =>
+          new Date(a.created_at ?? 0).getTime() -
+          new Date(b.created_at ?? 0).getTime()
+      );
+    }
+  }
+
+  return NextResponse.json({ email, threadEmails });
+}
+
 // PATCH: Update email properties (read, starred, folder, labels)
 export async function PATCH(request: NextRequest, { params }: EmailRouteParams) {
   const { id } = await params;

@@ -597,17 +597,28 @@ function InlineReplyComposer({
   );
 }
 
+import { useEmailDetail } from "@/lib/hooks/use-emails-query";
+import { useQueryClient } from "@tanstack/react-query";
+
 /* ──────────────────────────────────────────────
    Main EmailThread Component
    ────────────────────────────────────────────── */
 export function EmailThread({
-  emails,
+  emails: initialEmails,
   currentEmailId,
   folder,
 }: EmailThreadProps) {
   const router = useRouter();
   const supabase = createClient();
+  const queryClient = useQueryClient();
   const { openCompose } = useMailContext();
+
+  const { data: threadData } = useEmailDetail(currentEmailId, {
+    email: initialEmails.find((e) => e.id === currentEmailId) ?? initialEmails[0],
+    threadEmails: initialEmails,
+  });
+
+  const emails = threadData?.threadEmails ?? initialEmails;
   const currentEmail = emails.find((e) => e.id === currentEmailId) ?? emails[0];
   const lastEmail = emails[emails.length - 1];
   const threadScrollRef = useRef<HTMLDivElement>(null);
@@ -619,27 +630,37 @@ export function EmailThread({
   const defaultMailboxId = lastEmail?.mailbox_id;
 
   const handleArchive = async () => {
-    // Archive all emails in the thread
     const ids = emails.map((e) => e.id);
     await supabase.from("emails").update({ folder: "archive" }).in("id", ids);
+    queryClient.invalidateQueries({ queryKey: ["emails"] });
+    queryClient.invalidateQueries({ queryKey: ["email-detail", currentEmailId] });
     router.push(`/mail/${folder}`);
-    router.refresh();
   };
 
   const handleTrash = async () => {
     const ids = emails.map((e) => e.id);
     await supabase.from("emails").update({ folder: "trash" }).in("id", ids);
+    queryClient.invalidateQueries({ queryKey: ["emails"] });
+    queryClient.invalidateQueries({ queryKey: ["email-detail", currentEmailId] });
     router.push(`/mail/${folder}`);
-    router.refresh();
   };
 
   const handleStar = async () => {
     const newStarred = !currentEmail.is_starred;
+    queryClient.setQueryData(["email-detail", currentEmailId], (prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        email: { ...prev.email, is_starred: newStarred },
+        threadEmails: prev.threadEmails?.map((e: Email) =>
+          e.id === currentEmailId ? { ...e, is_starred: newStarred } : e
+        ),
+      };
+    });
     await supabase
       .from("emails")
       .update({ is_starred: newStarred })
       .eq("id", currentEmailId);
-    router.refresh();
   };
 
   const openInlineReply = useCallback(

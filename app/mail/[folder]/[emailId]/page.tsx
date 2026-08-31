@@ -11,8 +11,22 @@ interface EmailDetailPageProps {
   params: Promise<{ folder: string; emailId: string }>;
 }
 
+const VALID_FOLDERS = [
+  "inbox",
+  "sent",
+  "drafts",
+  "trash",
+  "archive",
+  "starred",
+];
+
 export default async function EmailDetailPage({ params }: EmailDetailPageProps) {
   const { folder, emailId } = await params;
+
+  if (!VALID_FOLDERS.includes(folder)) {
+    redirect("/mail/inbox");
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -29,22 +43,26 @@ export default async function EmailDetailPage({ params }: EmailDetailPageProps) 
   if (!org) redirect("/auth/login");
 
   // Fetch folder list and selected email in PARALLEL
-  let folderQuery = supabase
+  const baseQuery = supabase
     .from("emails")
     .select("*")
     .eq("org_id", org.id)
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (folder === "starred") {
-    folderQuery = folderQuery.eq("is_starred", true);
-  } else {
-    folderQuery = folderQuery.eq("folder", folder);
-  }
+  const folderQuery =
+    folder === "starred"
+      ? baseQuery.eq("is_starred", true)
+      : baseQuery.eq("folder", folder);
 
   const [folderResult, emailResult] = await Promise.all([
     folderQuery,
-    supabase.from("emails").select("*").eq("id", emailId).single(),
+    supabase
+      .from("emails")
+      .select("*")
+      .eq("id", emailId)
+      .eq("org_id", org.id)
+      .single(),
   ]);
 
   const email = emailResult.data;
@@ -54,16 +72,24 @@ export default async function EmailDetailPage({ params }: EmailDetailPageProps) 
   let threadEmails = [email];
 
   if (email.message_id || email.in_reply_to) {
-    const filter = email.in_reply_to
-      ? `in_reply_to.eq.${email.message_id},message_id.eq.${email.in_reply_to}`
-      : `in_reply_to.eq.${email.message_id}`;
-
-    const { data: related } = await supabase
+    let relatedQuery = supabase
       .from("emails")
       .select("*")
-      .or(filter)
+      .eq("org_id", org.id)
       .neq("id", email.id)
       .order("created_at", { ascending: true });
+
+    if (email.in_reply_to && email.message_id) {
+      relatedQuery = relatedQuery.or(
+        `in_reply_to.eq."${email.message_id}",message_id.eq."${email.in_reply_to}"`
+      );
+    } else if (email.message_id) {
+      relatedQuery = relatedQuery.eq("in_reply_to", email.message_id);
+    } else if (email.in_reply_to) {
+      relatedQuery = relatedQuery.eq("message_id", email.in_reply_to);
+    }
+
+    const { data: related } = await relatedQuery;
 
     if (related && related.length > 0) {
       threadEmails = [...related, email].sort(
@@ -74,9 +100,9 @@ export default async function EmailDetailPage({ params }: EmailDetailPageProps) 
     }
   }
 
-  // Non-blocking mark-as-read (fire-and-forget)
+  // Mark as read
   if (!email.is_read) {
-    supabase.from("emails").update({ is_read: true }).eq("id", emailId).then();
+    await supabase.from("emails").update({ is_read: true }).eq("id", emailId);
   }
 
   const leftPane = (
