@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 interface ResizableSplitPaneProps {
   left: ReactNode;
@@ -19,24 +20,61 @@ export function ResizableSplitPane({
   minWidth = 280,
   maxWidth = 650,
   storageKey = "dmail_split_pane_width",
-  mobileShowRight = false,
+  mobileShowRight,
 }: ResizableSplitPaneProps) {
-  const [width, setWidth] = useState<number>(() => {
-    if (typeof window !== "undefined") {
+  const pathname = usePathname();
+  const isDetailPage = pathname ? pathname.split("/").filter(Boolean).length >= 3 : false;
+  const showRightMobile = mobileShowRight !== undefined ? mobileShowRight : isDetailPage;
+
+  // Initialize width from defaultWidth (which may come from SSR cookie)
+  const [width, setWidth] = useState<number>(defaultWidth);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Helper to persist width in both localStorage and cookie
+  const savePersistedWidth = useCallback(
+    (newWidth: number) => {
       try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(storageKey, newWidth.toString());
+          document.cookie = `${storageKey}=${newWidth}; path=/; max-age=31536000; SameSite=Lax`;
+        }
+      } catch (e) {}
+    },
+    [storageKey]
+  );
+
+  // Read saved width from localStorage / cookie on client mount
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
         const saved = localStorage.getItem(storageKey);
         if (saved) {
           const parsed = parseInt(saved, 10);
           if (!isNaN(parsed) && parsed >= minWidth && parsed <= maxWidth) {
-            return parsed;
+            setWidth(parsed);
+            return;
           }
         }
-      } catch (e) {}
+
+        // Fallback to cookie if localStorage empty
+        const match = document.cookie.match(new RegExp(`(?:^|; )${storageKey}=([^;]*)`));
+        if (match && match[1]) {
+          const parsed = parseInt(match[1], 10);
+          if (!isNaN(parsed) && parsed >= minWidth && parsed <= maxWidth) {
+            setWidth(parsed);
+          }
+        }
+      }
+    } catch (e) {}
+  }, [storageKey, minWidth, maxWidth]);
+
+  // Keep state in sync if defaultWidth prop changes from server
+  useEffect(() => {
+    if (defaultWidth >= minWidth && defaultWidth <= maxWidth) {
+      setWidth(defaultWidth);
     }
-    return defaultWidth;
-  });
-  const [isDragging, setIsDragging] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  }, [defaultWidth, minWidth, maxWidth]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -57,9 +95,7 @@ export function ResizableSplitPane({
 
       if (newWidth >= minWidth && newWidth <= maxWidth) {
         setWidth(newWidth);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(storageKey, newWidth.toString());
-        }
+        savePersistedWidth(newWidth);
       }
     }
 
@@ -70,9 +106,7 @@ export function ResizableSplitPane({
 
       if (newWidth >= minWidth && newWidth <= maxWidth) {
         setWidth(newWidth);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(storageKey, newWidth.toString());
-        }
+        savePersistedWidth(newWidth);
       }
     }
 
@@ -91,7 +125,7 @@ export function ResizableSplitPane({
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleMouseUp);
     };
-  }, [isDragging, minWidth, maxWidth, storageKey]);
+  }, [isDragging, minWidth, maxWidth, savePersistedWidth]);
 
   return (
     <div
@@ -110,7 +144,7 @@ export function ResizableSplitPane({
 
       {/* Mobile view rendering (single pane toggle) */}
       <div className="md:hidden w-full h-full overflow-hidden">
-        {mobileShowRight ? right : left}
+        {showRightMobile ? right : left}
       </div>
 
       {/* Draggable Divider Handle Bar (Desktop only) */}

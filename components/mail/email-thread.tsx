@@ -19,11 +19,13 @@ import {
   X,
   Minimize2,
   Maximize2,
+  Lock,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { useMailContext } from "@/components/mail/mail-shell";
 import { RichTextEditor } from "@/components/mail/rich-text-editor";
+import { EmailIframeViewer } from "@/components/mail/email-iframe-viewer";
 import type { Email } from "@/lib/types";
 
 /* ──────────────────────────────────────────────
@@ -40,15 +42,87 @@ type ReplyMode = "reply" | "replyAll" | "forward" | null;
 /* ──────────────────────────────────────────────
    Utility helpers
    ────────────────────────────────────────────── */
-function getInitials(email: string): string {
-  const name = email.split("@")[0];
-  if (!name) return "?";
-  return name.charAt(0).toUpperCase();
+const AVATAR_PALETTE = [
+  "#8B1E2D", // Deep burgundy
+  "#1E40AF", // Royal blue
+  "#065F46", // Forest emerald
+  "#92400E", // Warm amber
+  "#5B21B6", // Deep purple
+  "#9D174D", // Rose
+  "#115E59", // Teal
+  "#9A3412", // Burnt orange
+  "#3730A3", // Indigo
+];
+
+function getAvatarColor(str: string): string {
+  if (!str) return AVATAR_PALETTE[0];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
 }
 
-function getAvatarColor(email: string): string {
-  // Generate consistent color from email - use theme burgundy
-  return "#8B1E2D";
+function getInitials(name: string): string {
+  if (!name) return "?";
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+function formatAddressDisplay(rawAddress: string) {
+  if (!rawAddress) return { name: "Unknown", address: "" };
+
+  const match = rawAddress.match(/^(?:"?([^"]*)"?\s)?<([^>]+)>$/);
+  if (match) {
+    const rawName = match[1]?.trim();
+    const address = match[2];
+    if (rawName && rawName.length > 0 && !rawName.includes("@")) {
+      return { name: rawName, address };
+    }
+  }
+
+  const cleanAddr = (match ? match[2] : rawAddress).trim();
+  if (!cleanAddr.includes("@")) {
+    return { name: cleanAddr, address: cleanAddr };
+  }
+
+  const [localPart, domainPart] = cleanAddr.split("@");
+  const genericPrefixes = new Set([
+    "team", "marketing", "hello", "support", "info", "contact",
+    "billing", "notifications", "notification", "community", "webinar",
+    "updates", "update", "security", "digest", "news", "newsletter",
+    "sales", "press", "admin", "noreply", "no-reply"
+  ]);
+
+  if (genericPrefixes.has(localPart.toLowerCase()) && domainPart) {
+    const domainParts = domainPart.split(".");
+    const nonBrand = new Set([
+      "com", "io", "app", "org", "net", "ai", "co", "news",
+      "comms", "mail", "email", "team", "mg", "sendgrid", "website"
+    ]);
+    const brandCandidates = domainParts.filter((p) => !nonBrand.has(p.toLowerCase()));
+    const brand = brandCandidates.length > 0 ? brandCandidates[brandCandidates.length - 1] : domainParts[0];
+
+    const formattedBrand = brand
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/[-_]/g, " ")
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+    return { name: formattedBrand, address: cleanAddr };
+  }
+
+  const formattedName = localPart
+    .replace(/[-_.]/g, " ")
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  return { name: formattedName, address: cleanAddr };
 }
 
 function formatRelativeDate(dateStr: string | null): string {
@@ -107,10 +181,13 @@ function buildQuotedHtml(email: Email, mode: ReplyMode): string {
 
 function prepareEmailHtml(html: string): string {
   if (!html) return "";
-  return html.replace(/<a\s+(?:[^>]*?\s+)?href="([^"]*)"([^>]*)>/gi, (match, href, rest) => {
+  let prepared = html.replace(/<a\s+(?:[^>]*?\s+)?href="([^"]*)"([^>]*)>/gi, (match, href, rest) => {
     if (rest.includes("target=")) return match;
     return `<a href="${href}" target="_blank" rel="noopener noreferrer"${rest}>`;
   });
+  // Add loading="lazy" to all img tags if not already present
+  prepared = prepared.replace(/<img\b(?![^>]*\bloading=)([^>]*?)>/gi, '<img loading="lazy"$1>');
+  return prepared;
 }
 
 /* ──────────────────────────────────────────────
@@ -134,14 +211,71 @@ function EmailMessage({
   onForward: () => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const [showActions, setShowActions] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const detailsRef = useRef<HTMLDivElement>(null);
+
+  // Close details dropdown on click outside, scroll, wheel, Escape key, or window blur
+  useEffect(() => {
+    if (!showDetails) return;
+
+    const handleInteractionOutside = (e: Event) => {
+      if (detailsRef.current && detailsRef.current.contains(e.target as Node)) {
+        return;
+      }
+      setShowDetails(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowDetails(false);
+      }
+    };
+
+    const handleWindowBlur = () => {
+      setShowDetails(false);
+    };
+
+    // Capture phase intercepts mousedown, touchstart, scroll, and wheel anywhere on the page
+    // passive: true guarantees that scrolling is NEVER blocked or delayed
+    document.addEventListener("mousedown", handleInteractionOutside, true);
+    document.addEventListener("touchstart", handleInteractionOutside, true);
+    window.addEventListener("wheel", handleInteractionOutside, { capture: true, passive: true });
+    window.addEventListener("scroll", handleInteractionOutside, { capture: true, passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.removeEventListener("mousedown", handleInteractionOutside, true);
+      document.removeEventListener("touchstart", handleInteractionOutside, true);
+      window.removeEventListener("wheel", handleInteractionOutside, true);
+      window.removeEventListener("scroll", handleInteractionOutside, true);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [showDetails]);
 
   const sanitizedHtml = useMemo(() => {
     return email.body_html ? prepareEmailHtml(email.body_html) : "";
   }, [email.body_html]);
 
+  const formattedFullDate = useMemo(() => {
+    if (!email.created_at) return "";
+    try {
+      return format(new Date(email.created_at), "MMM d, yyyy, h:mm a");
+    } catch {
+      return email.created_at;
+    }
+  }, [email.created_at]);
+
+  const fromDomain = useMemo(() => {
+    if (!email.from_address || !email.from_address.includes("@")) return null;
+    return email.from_address.split("@")[1]?.trim().toLowerCase();
+  }, [email.from_address]);
+
   const attachments = Array.isArray(email.attachments) ? email.attachments : [];
   const hasAttachments = attachments.length > 0;
+
+  const senderInfo = formatAddressDisplay(email.from_address);
 
   // Collapsed state — compact single line
   if (!expanded) {
@@ -151,14 +285,14 @@ function EmailMessage({
         className="w-full flex items-center gap-3 px-3 sm:px-6 py-3 hover:bg-secondary/30 transition-colors text-left group"
       >
         <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white"
-          style={{ background: getAvatarColor(email.from_address) }}
+          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white select-none shadow-xs"
+          style={{ backgroundColor: getAvatarColor(email.from_address) }}
         >
-          {getInitials(email.from_address)}
+          {getInitials(senderInfo.name)}
         </div>
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <span className="text-sm font-semibold text-foreground truncate max-w-[140px] sm:max-w-[180px]">
-            {email.from_address.split("@")[0]}
+            {senderInfo.name}
           </span>
           <span className="text-xs text-muted-foreground truncate flex-1 hidden sm:inline">
             — {email.body_text?.slice(0, 100) ?? ""}
@@ -173,68 +307,35 @@ function EmailMessage({
 
   // Expanded state — full message
   return (
-    <div
-      className="group min-w-0 overflow-hidden"
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
-    >
+    <div className="group min-w-0 overflow-visible">
       {/* Message Header */}
-      <div className="flex items-start gap-3 px-3 sm:px-6 pt-5 pb-3 min-w-0">
+      <div className="flex items-center gap-3.5 px-3 sm:px-6 pt-4 pb-2.5 min-w-0">
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 text-white mt-0.5"
-          style={{ background: getAvatarColor(email.from_address) }}
+          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 text-white shadow-xs select-none"
+          style={{ backgroundColor: getAvatarColor(email.from_address) }}
         >
-          {getInitials(email.from_address)}
+          {getInitials(senderInfo.name)}
         </div>
 
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex items-baseline justify-between gap-2">
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-0">
+          <div className="flex items-center justify-between gap-2 leading-tight">
             <div className="flex items-baseline gap-1.5 min-w-0 flex-1">
-              <span className="text-sm font-bold text-foreground truncate">
-                {email.from_address.split("@")[0]}
+              <span className="text-sm font-bold text-foreground truncate leading-snug">
+                {senderInfo.name}
               </span>
-              <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                &lt;{email.from_address}&gt;
+              <span className="text-xs text-muted-foreground truncate hidden sm:inline font-normal leading-snug">
+                &lt;{senderInfo.address}&gt;
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <span className="text-[11px] text-muted-foreground font-mono whitespace-nowrap">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-[11px] text-muted-foreground font-mono whitespace-nowrap leading-none">
                 {formatRelativeDate(email.created_at)}
               </span>
 
-              {/* Action buttons — visible on hover */}
-              <div
-                className={`hidden sm:flex items-center gap-0.5 transition-opacity duration-150 ${
-                  showActions ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                <button
-                  onClick={onReply}
-                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
-                  title="Reply"
-                >
-                  <Reply className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={onReplyAll}
-                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
-                  title="Reply All"
-                >
-                  <ReplyAll className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={onForward}
-                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
-                  title="Forward"
-                >
-                  <Forward className="w-4 h-4" />
-                </button>
-              </div>
-
               <button
                 onClick={() => setExpanded(false)}
-                className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground transition-colors"
+                className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors -my-1"
                 title="Collapse message"
               >
                 <ChevronUp className="w-4 h-4" />
@@ -242,20 +343,101 @@ function EmailMessage({
             </div>
           </div>
 
-          {/* To / CC line */}
-          <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 min-w-0">
-            <span className="flex-shrink-0">to</span>
-            <span className="font-mono text-[11px] text-foreground/80 truncate">
-              {email.to_address}
-            </span>
-            {email.cc_address && (
-              <>
-                <span className="mx-0.5">&middot;</span>
-                <span className="flex-shrink-0">cc</span>
-                <span className="font-mono text-[11px] text-foreground/80 truncate">
-                  {email.cc_address}
-                </span>
-              </>
+          {/* To / Details line with popover dropdown */}
+          <div className="relative inline-block leading-none" ref={detailsRef}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDetails((prev) => !prev);
+              }}
+              className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors group/details py-0 px-1 -ml-1 rounded hover:bg-secondary/70 focus:outline-none leading-none"
+              title="Show details"
+            >
+              <span className="text-muted-foreground/75 font-normal">to</span>
+              <span className="font-medium text-foreground/85 truncate max-w-[200px] sm:max-w-[320px]">
+                {email.to_address}
+              </span>
+              <ChevronDown
+                className={`w-3 h-3 text-muted-foreground/70 transition-transform duration-150 inline-block align-middle ${
+                  showDetails ? "rotate-180 text-foreground" : ""
+                }`}
+              />
+            </button>
+
+            {/* Gmail-style Details Dropdown Card */}
+            {showDetails && (
+              <div
+                className="absolute -left-[54px] sm:left-0 top-full mt-1.5 z-50 w-[calc(100vw-24px)] max-w-[360px] sm:w-[420px] sm:max-w-none rounded-xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-sm animate-in fade-in-0 zoom-in-95 text-xs text-foreground select-text"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="grid grid-cols-[64px_1fr] sm:grid-cols-[68px_1fr] gap-x-2.5 sm:gap-x-3 gap-y-2 text-[12px] leading-relaxed">
+                  <div className="text-right text-muted-foreground select-none">from:</div>
+                  <div className="font-medium text-foreground break-all">
+                    {email.from_address}
+                  </div>
+
+                  <div className="text-right text-muted-foreground select-none">to:</div>
+                  <div className="text-foreground/90 break-all">
+                    {email.to_address}
+                  </div>
+
+                  {email.cc_address && (
+                    <>
+                      <div className="text-right text-muted-foreground select-none">cc:</div>
+                      <div className="text-foreground/90 break-all">
+                        {email.cc_address}
+                      </div>
+                    </>
+                  )}
+
+                  {email.bcc_address && (
+                    <>
+                      <div className="text-right text-muted-foreground select-none">bcc:</div>
+                      <div className="text-foreground/90 break-all">
+                        {email.bcc_address}
+                      </div>
+                    </>
+                  )}
+
+                  {formattedFullDate && (
+                    <>
+                      <div className="text-right text-muted-foreground select-none">date:</div>
+                      <div className="text-foreground/90">
+                        {formattedFullDate}
+                      </div>
+                    </>
+                  )}
+
+                  {email.subject && (
+                    <>
+                      <div className="text-right text-muted-foreground select-none">subject:</div>
+                      <div className="text-foreground/90 font-medium break-words">
+                        {email.subject}
+                      </div>
+                    </>
+                  )}
+
+                  {fromDomain && (
+                    <>
+                      <div className="text-right text-muted-foreground select-none">mailed-by:</div>
+                      <div className="text-foreground/80 font-mono text-[11px] break-all">
+                        {fromDomain}
+                      </div>
+                      <div className="text-right text-muted-foreground select-none">signed-by:</div>
+                      <div className="text-foreground/80 font-mono text-[11px] break-all">
+                        {fromDomain}
+                      </div>
+                    </>
+                  )}
+
+                  <div className="text-right text-muted-foreground select-none">security:</div>
+                  <div className="flex items-center gap-1.5 text-foreground/90">
+                    <Lock className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                    <span>Standard encryption (TLS)</span>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -264,10 +446,9 @@ function EmailMessage({
       {/* Message Body */}
       <div className="px-3 sm:px-6 pb-4 sm:pl-[68px]">
         {email.body_html ? (
-          <div
-            className="email-rendered-body text-sm leading-relaxed overflow-x-auto max-w-full text-foreground/90 select-text"
-            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-          />
+          <div className="text-sm leading-relaxed overflow-x-auto max-w-full text-foreground/90 select-text">
+            <EmailIframeViewer content={sanitizedHtml} />
+          </div>
         ) : (
           <pre className="whitespace-pre-wrap font-sans text-sm text-foreground/90 leading-relaxed m-0">
             {email.body_text ?? ""}
@@ -613,12 +794,20 @@ export function EmailThread({
   const queryClient = useQueryClient();
   const { openCompose } = useMailContext();
 
-  const { data: threadData } = useEmailDetail(currentEmailId, {
-    email: initialEmails.find((e) => e.id === currentEmailId) ?? initialEmails[0],
-    threadEmails: initialEmails,
-  });
+  // Check if initialEmails from server already has rich body content
+  const serverHasBody = initialEmails.some((e) => Boolean(e.body_html || e.body_text));
 
-  const emails = threadData?.threadEmails ?? initialEmails;
+  const { data: threadData } = useEmailDetail(
+    currentEmailId,
+    serverHasBody
+      ? {
+          email: initialEmails.find((e) => e.id === currentEmailId) ?? initialEmails[0],
+          threadEmails: initialEmails,
+        }
+      : undefined
+  );
+
+  const emails = serverHasBody ? initialEmails : (threadData?.threadEmails ?? initialEmails);
   const currentEmail = emails.find((e) => e.id === currentEmailId) ?? emails[0];
   const lastEmail = emails[emails.length - 1];
   const threadScrollRef = useRef<HTMLDivElement>(null);

@@ -111,6 +111,8 @@ export default {
         .filter(Boolean)
         .join(", ") || null;
 
+      const isStarred = shouldAutoStarEmail(fromAddress);
+
       // 6. Insert email record
       const { error: insertError } = await supabase.from("emails").insert({
         org_id: mailbox.org_id,
@@ -127,7 +129,7 @@ export default {
         attachments: attachmentUrls.length > 0 ? attachmentUrls : [],
         folder: "inbox",
         is_read: false,
-        is_starred: false,
+        is_starred: isStarred,
         received_at: new Date().toISOString(),
       });
 
@@ -170,3 +172,53 @@ async function streamToArrayBuffer(
 
   return result.buffer;
 }
+
+const TRUSTED_STARRED_DOMAINS = [
+  // Institutional & requested domains:
+  "nitdelhi.ac.in",
+  "gmail.com",
+  "googlemail.com",
+  "outlook.com",
+  "outlook.in",
+  "proton.me",
+  "protonmail.com",
+  "pm.me",
+
+  // Microsoft Webmail Services:
+  "hotmail.com",
+  "hotmail.in",
+  "live.com",
+  "msn.com",
+
+  // Apple Mail Services:
+  "icloud.com",
+  "me.com",
+  "mac.com",
+
+  // Major Public Webmail:
+  "yahoo.com",
+  "yahoo.in",
+  "yahoo.co.in",
+  "ymail.com",
+  "zoho.com",
+  "zoho.in",
+  "aol.com",
+];
+
+function shouldAutoStarEmail(fromAddress: string | null | undefined): boolean {
+  if (!fromAddress) return false;
+
+  const match = fromAddress.match(/<([^>]+)>/);
+  const email = (match ? match[1] : fromAddress).trim().toLowerCase();
+
+  const atIndex = email.lastIndexOf("@");
+  if (atIndex === -1) return false;
+
+  const domain = email.slice(atIndex + 1).trim();
+  if (!domain) return false;
+
+  return TRUSTED_STARRED_DOMAINS.some(
+    (trusted) => domain === trusted || domain.endsWith(`.${trusted}`)
+  );
+}
+

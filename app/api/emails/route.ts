@@ -28,7 +28,9 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("emails")
-    .select("*")
+    .select(
+      "id, org_id, mailbox_id, from_address, to_address, cc_address, bcc_address, subject, folder, is_read, is_starred, created_at, message_id, in_reply_to, attachments, labels"
+    )
     .eq("org_id", org.id)
     .order("created_at", { ascending: false })
     .limit(limit);

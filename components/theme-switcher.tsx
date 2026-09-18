@@ -21,10 +21,12 @@ export const ThemeSwitcher = ({
   align = "start",
   size = "sm",
   variant = "ghost",
+  className = "",
 }: {
   align?: "start" | "center" | "end";
   size?: "default" | "sm" | "lg" | "icon";
   variant?: "ghost" | "outline" | "default" | "secondary";
+  className?: string;
 }) => {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -33,9 +35,13 @@ export const ThemeSwitcher = ({
     setMounted(true);
   }, []);
 
+  const buttonStyle = `text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ${
+    size === "icon" ? "w-9 h-9 p-0 flex items-center justify-center" : "gap-2"
+  } ${className}`;
+
   if (!mounted) {
     return (
-      <Button variant={variant} size={size} disabled aria-label="Toggle theme">
+      <Button variant={variant} size={size} disabled className={buttonStyle} aria-label="Toggle theme">
         <Sun size={ICON_SIZE} className="text-muted-foreground opacity-50" />
       </Button>
     );
@@ -44,11 +50,11 @@ export const ThemeSwitcher = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant={variant} size={size} aria-label="Select theme">
+        <Button variant={variant} size={size} className={buttonStyle} aria-label="Select theme">
           {theme === "light" ? (
             <Sun key="light" size={ICON_SIZE} className="text-amber-500" />
           ) : theme === "dark" ? (
-            <Moon key="dark" size={ICON_SIZE} className="text-slate-300" />
+            <Moon key="dark" size={ICON_SIZE} className="text-muted-foreground hover:text-foreground transition-colors" />
           ) : (
             <Laptop key="system" size={ICON_SIZE} className="text-muted-foreground" />
           )}
@@ -93,9 +99,13 @@ export const ThemeToggle = ({
     setMounted(true);
   }, []);
 
+  const buttonStyle = `text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ${
+    size === "icon" ? "w-9 h-9 p-0 flex items-center justify-center" : "gap-2"
+  } ${className}`;
+
   if (!mounted) {
     return (
-      <Button variant={variant} size={size} className={className} disabled aria-label="Toggle theme">
+      <Button variant={variant} size={size} className={buttonStyle} disabled aria-label="Toggle theme">
         <Sun size={ICON_SIZE} className="text-muted-foreground opacity-50" />
       </Button>
     );
@@ -107,7 +117,7 @@ export const ThemeToggle = ({
     <Button
       variant={variant}
       size={size}
-      className={className}
+      className={buttonStyle}
       onClick={() => setTheme(isDark ? "light" : "dark")}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
       aria-label="Toggle light and dark mode"
@@ -115,7 +125,7 @@ export const ThemeToggle = ({
       {isDark ? (
         <Sun size={ICON_SIZE} className="text-amber-400 hover:text-amber-300 transition-colors" />
       ) : (
-        <Moon size={ICON_SIZE} className="text-slate-600 hover:text-slate-800 transition-colors" />
+        <Moon size={ICON_SIZE} className="text-muted-foreground hover:text-foreground transition-colors" />
       )}
     </Button>
   );

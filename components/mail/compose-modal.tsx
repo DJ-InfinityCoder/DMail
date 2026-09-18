@@ -413,7 +413,7 @@ export function ComposeModal({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={`
-            relative w-full max-w-2xl sm:mx-4 glass rounded-t-2xl sm:rounded-xl shadow-2xl animate-slide-in-up overflow-hidden h-[90vh] sm:h-auto flex flex-col z-10 transition-all
+            relative w-full max-w-2xl sm:mx-4 glass rounded-t-2xl sm:rounded-xl shadow-lg animate-slide-in-up overflow-hidden h-[90vh] sm:h-auto flex flex-col z-10 transition-all
             ${isDragOver ? "ring-2 ring-primary bg-primary/5" : ""}
           `}
         >

@@ -123,7 +123,7 @@ export function GlobalSearchModal({ open, onOpenChange, orgId }: GlobalSearchMod
       />
 
       {/* Palette Container */}
-      <div className="relative w-full max-w-xl mx-4 glass-card shadow-2xl overflow-hidden animate-slide-in-up z-10 flex flex-col max-h-[80vh]">
+      <div className="relative w-full max-w-xl mx-4 glass-card shadow-lg overflow-hidden animate-slide-in-up z-10 flex flex-col max-h-[80vh]">
         {/* Search Bar Input */}
         <div className="flex items-center gap-3 px-4 h-14 border-b border-border/50 bg-card">
           <Search className="w-5 h-5 text-primary flex-shrink-0" />

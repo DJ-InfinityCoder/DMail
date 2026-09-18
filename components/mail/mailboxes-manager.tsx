@@ -340,7 +340,7 @@ export function MailboxesManager({
       {/* Delete Confirmation Modal */}
       {mailboxToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
-          <div className="glass rounded-xl p-6 max-w-md w-full border border-border shadow-2xl space-y-4 animate-scale-in">
+          <div className="glass rounded-xl p-6 max-w-md w-full border border-border shadow-lg space-y-4 animate-scale-in">
             <div className="flex items-center gap-3 text-destructive">
               <div className="p-2 rounded-lg bg-destructive/10">
                 <AlertTriangle className="w-5 h-5" />

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, type TouchEvent } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useCallback, useRef, type TouchEvent } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Star,
   Archive,
@@ -11,7 +11,6 @@ import {
   RefreshCw,
   CheckSquare,
   Square,
-  SlidersHorizontal,
   Search,
   Check,
   X,
@@ -24,10 +23,10 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useMailContext } from "@/components/mail/mail-shell";
-import type { Email } from "@/lib/types";
+import type { Email, EmailListItem } from "@/lib/types";
 
 interface EmailListProps {
-  emails: Email[];
+  emails: (Email | EmailListItem)[];
   folder: string;
   orgId: string;
   onOpenSearch?: () => void;
@@ -79,62 +78,145 @@ const folderEmptyStates: Record<
   },
 };
 
+const AVATAR_PALETTE = [
+  "#8B1E2D", // Deep burgundy
+  "#1E40AF", // Royal blue
+  "#065F46", // Forest emerald
+  "#92400E", // Warm amber
+  "#5B21B6", // Deep purple
+  "#9D174D", // Rose
+  "#115E59", // Teal
+  "#9A3412", // Burnt orange
+  "#3730A3", // Indigo
+];
+
+function getAvatarColor(str: string): string {
+  if (!str) return AVATAR_PALETTE[0];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+
+function getInitials(name: string): string {
+  if (!name) return "?";
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
 function formatAddressDisplay(rawAddress: string) {
   if (!rawAddress) return { name: "Unknown", address: "" };
 
   const match = rawAddress.match(/^(?:"?([^"]*)"?\s)?<([^>]+)>$/);
   if (match) {
-    const name = match[1]?.trim() || match[2].split("@")[0];
-    return { name, address: match[2] };
+    const rawName = match[1]?.trim();
+    const address = match[2];
+    if (rawName && rawName.length > 0 && !rawName.includes("@")) {
+      return { name: rawName, address };
+    }
   }
 
-  if (rawAddress.includes("@")) {
-    const parts = rawAddress.split("@");
-    return { name: parts[0], address: rawAddress };
+  const cleanAddr = (match ? match[2] : rawAddress).trim();
+  if (!cleanAddr.includes("@")) {
+    return { name: cleanAddr, address: cleanAddr };
   }
 
-  return { name: rawAddress, address: rawAddress };
+  const [localPart, domainPart] = cleanAddr.split("@");
+  const genericPrefixes = new Set([
+    "team", "marketing", "hello", "support", "info", "contact",
+    "billing", "notifications", "notification", "community", "webinar",
+    "updates", "update", "security", "digest", "news", "newsletter",
+    "sales", "press", "admin", "noreply", "no-reply"
+  ]);
+
+  // If local part is generic, extract recognizable brand name from domain
+  if (genericPrefixes.has(localPart.toLowerCase()) && domainPart) {
+    const domainParts = domainPart.split(".");
+    const nonBrand = new Set([
+      "com", "io", "app", "org", "net", "ai", "co", "news",
+      "comms", "mail", "email", "team", "mg", "sendgrid", "website"
+    ]);
+    const brandCandidates = domainParts.filter((p) => !nonBrand.has(p.toLowerCase()));
+    const brand = brandCandidates.length > 0 ? brandCandidates[brandCandidates.length - 1] : domainParts[0];
+
+    const formattedBrand = brand
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/[-_]/g, " ")
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+    return { name: formattedBrand, address: cleanAddr };
+  }
+
+  const formattedName = localPart
+    .replace(/[-_.]/g, " ")
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  return { name: formattedName, address: cleanAddr };
 }
 
 function formatShortDate(dateStr: string | null): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  // Same day -> "12:44 PM"
+  const isSameDay =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isSameDay) {
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  // Yesterday
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear()
+  ) {
+    return "Yesterday";
+  }
+
+  // Within current calendar year -> "Aug 24"
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  // Prior year -> "8/24/25"
+  return date.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "2-digit" });
 }
 
 /* ──────────────────────────────────────────────
    Skeleton Loading State Component
    ────────────────────────────────────────────── */
-function EmailListSkeleton({ density }: { density: "comfortable" | "compact" }) {
+function EmailListSkeleton() {
   return (
-    <div className="divide-y divide-border/30">
-      {Array.from({ length: 6 }).map((_, i) => (
+    <div className="p-1.5 space-y-1">
+      {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className={`flex items-start gap-3.5 px-4 ${
-            density === "compact" ? "py-2" : "py-3.5"
-          }`}
+          className="flex items-start gap-3 px-3.5 py-2.5 rounded-xl border border-transparent"
         >
-          <div className="w-4 h-4 rounded skeleton-shimmer mt-1 flex-shrink-0" />
-          <div className="flex-1 space-y-2">
+          <div className="w-8 h-8 rounded-full skeleton-shimmer flex-shrink-0 mt-0.5" />
+          <div className="w-3.5 h-3.5 rounded skeleton-shimmer flex-shrink-0 mt-2" />
+          <div className="flex-1 space-y-2 min-w-0">
             <div className="flex justify-between items-center">
               <div className="w-28 h-3.5 rounded skeleton-shimmer" />
               <div className="w-12 h-3 rounded skeleton-shimmer" />
             </div>
             <div className="w-48 h-3 rounded skeleton-shimmer" />
-            {density === "comfortable" && (
-              <div className="w-full max-w-[280px] h-2.5 rounded skeleton-shimmer" />
-            )}
+            <div className="w-full max-w-[260px] h-2.5 rounded skeleton-shimmer" />
           </div>
         </div>
       ))}
@@ -145,12 +227,12 @@ function EmailListSkeleton({ density }: { density: "comfortable" | "compact" }) 
 /* ──────────────────────────────────────────────
    Single Swipable Email Row Component
    ────────────────────────────────────────────── */
-function SwipableEmailRow({
+const SwipableEmailRow = React.memo(function SwipableEmailRow({
   email,
   folder,
   selectedId,
   isSelected,
-  density,
+  hasActiveSelection,
   onSelectToggle,
   onOpenEmail,
   onToggleStar,
@@ -159,20 +241,19 @@ function SwipableEmailRow({
   onMarkReadToggle,
   onSnooze,
 }: {
-  email: Email;
+  email: Email | EmailListItem;
   folder: string;
   selectedId: string | null;
   isSelected: boolean;
-  density: "comfortable" | "compact";
+  hasActiveSelection: boolean;
   onSelectToggle: (e: React.MouseEvent, id: string) => void;
-  onOpenEmail: (email: Email) => void;
+  onOpenEmail: (email: Email | EmailListItem) => void;
   onToggleStar: (e: React.MouseEvent, id: string, starred: boolean) => void;
   onArchive: (e: React.MouseEvent, id: string) => void;
   onTrash: (e: React.MouseEvent, id: string) => void;
   onMarkReadToggle: (id: string, isRead: boolean) => void;
   onSnooze?: (id: string) => void;
 }) {
-  const router = useRouter();
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const isSwiping = useRef(false);
@@ -198,10 +279,8 @@ function SwipableEmailRow({
     isSwiping.current = false;
 
     if (swipeOffset > 90) {
-      // Swiped right -> Archive
       onArchive(e as any, email.id);
     } else if (swipeOffset < -90) {
-      // Swiped left -> Delete
       onTrash(e as any, email.id);
     }
 
@@ -218,7 +297,7 @@ function SwipableEmailRow({
       {/* Swipe Background Action Indicator (only visible during touch swipe) */}
       {swipeOffset !== 0 && (
         <div
-          className={`absolute inset-0 flex items-center justify-between px-6 transition-colors font-medium text-xs text-white z-0 ${
+          className={`absolute inset-0 flex items-center justify-between px-6 transition-colors font-medium text-xs text-white z-0 rounded-xl ${
             swipeOffset > 0 ? "bg-emerald-600 justify-start" : "bg-rose-600 justify-end"
           }`}
         >
@@ -236,95 +315,141 @@ function SwipableEmailRow({
         </div>
       )}
 
-      {/* Row content */}
+      {/* Row Card */}
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={() => onOpenEmail(email)}
-        onMouseEnter={() => {
-          router.prefetch(`/mail/${folder}/${email.id}`);
-        }}
         style={{
           transform: `translateX(${swipeOffset}px)`,
           transition: swipeOffset === 0 ? "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
         }}
         className={`
-          flex items-start gap-3 px-4 ${density === "compact" ? "py-2" : "py-3"}
-          cursor-pointer transition-colors duration-150 relative bg-card z-10 select-none border-b border-border/30
-          ${selectedId === email.id ? "bg-primary/10 border-l-4 border-l-primary" : ""}
-          ${isSelected ? "bg-primary/5" : ""}
-          ${!email.is_read ? "font-semibold bg-card" : "bg-card hover:bg-secondary/40"}
+          flex items-start gap-3 px-3.5 py-2.5 mx-1 my-0.5 rounded-xl
+          cursor-pointer transition-all duration-150 relative z-10 select-none border
+          ${
+            selectedId === email.id
+              ? "bg-primary/[0.08] dark:bg-primary/[0.14] border-primary/30 shadow-xs"
+              : isSelected
+              ? "bg-primary/[0.05] border-primary/20"
+              : !email.is_read
+              ? "bg-card hover:bg-secondary/60 border-border/50 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+              : "bg-card/40 hover:bg-secondary/40 border-transparent text-muted-foreground/90"
+          }
         `}
       >
-        {/* Selection Checkbox */}
-        <button
-          onClick={(e) => onSelectToggle(e, email.id)}
-          className="pt-0.5 text-muted-foreground hover:text-foreground transition-colors touch-target -ml-1"
-          title={isSelected ? "Deselect" : "Select"}
-        >
-          {isSelected ? (
-            <CheckSquare className="w-4 h-4 text-primary" />
-          ) : (
-            <Square className="w-4 h-4 text-muted-foreground/50 hover:text-muted-foreground" />
-          )}
-        </button>
+        {/* Active email left indicator pill */}
+        {selectedId === email.id && (
+          <div className="absolute left-0 top-2.5 bottom-2.5 w-1 bg-primary rounded-r-full shadow-xs" />
+        )}
 
-        {/* Star & Unread Indicator */}
-        <div className="flex flex-col items-center gap-1.5 pt-0.5 flex-shrink-0">
+        {/* Left: Avatar with Checkbox Morph & Star */}
+        <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
+          {/* Morphing Avatar / Checkbox */}
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectToggle(e, email.id);
+            }}
+            className="relative w-8 h-8 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0 select-none group/avatar transition-transform active:scale-95"
+            title={isSelected ? "Deselect" : "Select"}
+          >
+            {/* Colored Avatar with Sender Initials */}
+            <div
+              className={`w-full h-full rounded-full flex items-center justify-center text-[11px] font-bold text-white shadow-xs transition-all duration-150 ${
+                isSelected
+                  ? "hidden"
+                  : hasActiveSelection
+                  ? "hidden"
+                  : "group-hover:hidden"
+              }`}
+              style={{ backgroundColor: getAvatarColor(email.from_address) }}
+            >
+              {getInitials(senderInfo.name)}
+            </div>
+
+            {/* Checkbox (visible on row hover, or when selected, or in multi-select mode) */}
+            <div
+              className={`w-full h-full rounded-full flex items-center justify-center transition-all duration-150 ${
+                isSelected
+                  ? "bg-primary text-primary-foreground shadow-sm scale-100"
+                  : hasActiveSelection
+                  ? "flex bg-secondary border border-border text-muted-foreground/60 hover:text-foreground hover:border-primary"
+                  : "hidden group-hover:flex bg-secondary border border-border/80 text-muted-foreground/60 hover:text-foreground hover:border-primary"
+              }`}
+            >
+              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+            </div>
+          </div>
+
+          {/* Star button */}
           <button
-            onClick={(e) => onToggleStar(e, email.id, !!email.is_starred)}
-            className="text-muted-foreground hover:text-amber-500 transition-colors p-0.5"
+            onClick={(e) => onToggleStar(e, email.id, !email.is_starred)}
+            className="p-1 rounded-md text-muted-foreground/40 hover:text-amber-500 transition-colors"
             title={email.is_starred ? "Unstar" : "Star"}
           >
             <Star
-              className={`w-4 h-4 ${
+              className={`w-4 h-4 transition-transform active:scale-125 ${
                 email.is_starred
                   ? "fill-amber-500 text-amber-500"
-                  : "text-muted-foreground/40 hover:text-amber-500"
+                  : "hover:text-amber-500"
               }`}
             />
           </button>
-          {!email.is_read && (
-            <span className="w-2 h-2 rounded-full bg-primary shadow-sm pulse-dot" title="Unread" />
-          )}
         </div>
 
-        {/* Content Column */}
-        <div className="flex-1 min-w-0">
-          {/* Sender & Date */}
+        {/* Middle: Content Column */}
+        <div className="flex-1 min-w-0 pr-1">
+          {/* Sender & Date Line */}
           <div className="flex items-center justify-between gap-2 mb-0.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              {!email.is_read && (
+                <span
+                  className="w-2 h-2 rounded-full bg-primary flex-shrink-0 animate-pulse"
+                  title="Unread"
+                />
+              )}
+              <span
+                className={`text-xs truncate leading-snug ${
+                  !email.is_read
+                    ? "font-bold text-foreground"
+                    : "font-semibold text-foreground/85"
+                }`}
+              >
+                {folder === "sent" ? `To: ${senderInfo.name}` : senderInfo.name}
+              </span>
+            </div>
             <span
-              className={`text-sm truncate leading-snug ${
-                !email.is_read ? "font-bold text-foreground" : "font-semibold text-foreground/80"
+              className={`text-[11px] font-mono whitespace-nowrap flex-shrink-0 ${
+                !email.is_read ? "font-bold text-primary" : "text-muted-foreground/70"
               }`}
             >
-              {folder === "sent" ? `To: ${senderInfo.name}` : senderInfo.name}
-            </span>
-            <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap flex-shrink-0">
               {formatShortDate(email.created_at)}
             </span>
           </div>
 
-          {/* Subject */}
+          {/* Subject Line */}
           <h4
             className={`text-xs truncate leading-snug mb-0.5 ${
-              !email.is_read ? "font-bold text-foreground" : "font-medium text-foreground/80"
+              !email.is_read
+                ? "font-bold text-foreground"
+                : "font-medium text-foreground/80"
             }`}
           >
             {email.subject ?? "(no subject)"}
           </h4>
 
           {/* Body Snippet */}
-          {density === "comfortable" && email.body_text && (
-            <p className="text-[11px] text-muted-foreground/75 truncate leading-relaxed">
+          {email.body_text && (
+            <p className="text-[11px] text-muted-foreground/65 truncate leading-relaxed font-normal">
               {email.body_text}
             </p>
           )}
         </div>
 
-        {/* Hover Quick Actions Toolbar */}
-        <div className="hidden group-hover:flex items-center gap-0.5 bg-card/95 backdrop-blur-sm p-1 rounded-lg border border-border shadow-md absolute right-3 top-2.5 z-20">
+        {/* Hover Floating Action Bar */}
+        <div className="hidden group-hover:flex items-center gap-0.5 bg-background/95 dark:bg-card/95 backdrop-blur-md px-1.5 py-0.5 rounded-lg border border-border/80 shadow-md absolute right-3 top-2.5 z-20 animate-in fade-in-0 zoom-in-95 duration-100">
           <button
             onClick={(e) => onArchive(e, email.id)}
             className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -334,7 +459,7 @@ function SwipableEmailRow({
           </button>
           <button
             onClick={(e) => onTrash(e, email.id)}
-            className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-destructive transition-colors"
+            className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
             title="Delete"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -342,12 +467,16 @@ function SwipableEmailRow({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onMarkReadToggle(email.id, !!email.is_read);
+              onMarkReadToggle(email.id, !email.is_read);
             }}
             className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
             title={email.is_read ? "Mark unread" : "Mark read"}
           >
-            {email.is_read ? <MailIcon className="w-3.5 h-3.5" /> : <MailOpen className="w-3.5 h-3.5" />}
+            {email.is_read ? (
+              <MailIcon className="w-3.5 h-3.5" />
+            ) : (
+              <MailOpen className="w-3.5 h-3.5" />
+            )}
           </button>
           {onSnooze && (
             <button
@@ -365,7 +494,7 @@ function SwipableEmailRow({
       </div>
     </div>
   );
-}
+});
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useFolderEmails } from "@/lib/hooks/use-emails-query";
@@ -387,11 +516,10 @@ export function EmailList({
     initialEmails
   );
 
-  const [emails, setEmails] = useState<Email[]>(cachedEmails);
+  const [emails, setEmails] = useState<(Email | EmailListItem)[]>(cachedEmails);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
   const [pullDistance, setPullDistance] = useState(0);
 
   const isLoading = isFetching && emails.length === 0;
@@ -399,9 +527,22 @@ export function EmailList({
   const touchContainerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
   const { openSearch } = useMailContext();
   const handleSearchClick = onOpenSearch ?? openSearch;
+
+  // Sync selectedId with active route (e.g. /mail/inbox/[emailId])
+  useEffect(() => {
+    if (pathname) {
+      const segments = pathname.split("/").filter(Boolean);
+      if (segments.length >= 3 && segments[0] === "mail") {
+        setSelectedId(segments[2]);
+      } else {
+        setSelectedId(null);
+      }
+    }
+  }, [pathname]);
 
   // Sync state when cachedEmails updates
   useEffect(() => {
@@ -464,10 +605,19 @@ export function EmailList({
             });
 
             setEmails((prev) => {
+              const existing = prev.find((e) => e.id === updatedEmail.id);
+              if (
+                existing &&
+                existing.is_read === updatedEmail.is_read &&
+                existing.is_starred === updatedEmail.is_starred &&
+                existing.folder === updatedEmail.folder
+              ) {
+                return prev;
+              }
               if (matchesFolder) {
                 const exists = prev.some((e) => e.id === updatedEmail.id);
                 return exists
-                  ? prev.map((e) => (e.id === updatedEmail.id ? updatedEmail : e))
+                  ? prev.map((e) => (e.id === updatedEmail.id ? { ...e, ...updatedEmail } : e))
                   : [updatedEmail, ...prev];
               } else {
                 return prev.filter((e) => e.id !== updatedEmail.id);
@@ -622,8 +772,9 @@ export function EmailList({
   };
 
   const openEmail = useCallback(
-    (email: Email) => {
+    (email: Email | EmailListItem) => {
       setSelectedId(email.id);
+
       if (!email.is_read) {
         queryClient.setQueryData<Email[]>(["emails", orgId, folder], (prev = []) =>
           prev.map((em) => (em.id === email.id ? { ...em, is_read: true } : em))
@@ -715,17 +866,6 @@ export function EmailList({
                 </span>
               </button>
 
-              {/* Density Toggle */}
-              <button
-                onClick={() =>
-                  setDensity((d) => (d === "comfortable" ? "compact" : "comfortable"))
-                }
-                className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-                title={`Density: ${density}`}
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </button>
-
               {/* Refresh Button */}
               <button
                 onClick={refresh}
@@ -755,10 +895,10 @@ export function EmailList({
         onTouchStart={handleTouchStartPull}
         onTouchMove={handleTouchMovePull}
         onTouchEnd={handleTouchEndPull}
-        className="flex-1 overflow-y-auto divide-y divide-border/40"
+        className="flex-1 overflow-y-auto p-1.5 space-y-0.5"
       >
         {isLoading ? (
-          <EmailListSkeleton density={density} />
+          <EmailListSkeleton />
         ) : emails.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-20 px-4 text-center animate-fade-in">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4 shadow-sm">
@@ -779,7 +919,7 @@ export function EmailList({
               folder={folder}
               selectedId={selectedId}
               isSelected={selectedEmailIds.includes(email.id)}
-              density={density}
+              hasActiveSelection={selectedEmailIds.length > 0}
               onSelectToggle={handleSelectToggle}
               onOpenEmail={openEmail}
               onToggleStar={toggleStar}

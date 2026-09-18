@@ -38,7 +38,7 @@ export function KeyboardShortcutsOverlay({
         onClick={() => onOpenChange(false)}
       />
 
-      <div className="relative glass rounded-xl shadow-2xl shadow-black/50 w-full max-w-md mx-4 animate-slide-in-up overflow-hidden">
+      <div className="relative glass rounded-xl shadow-lg w-full max-w-md mx-4 animate-slide-in-up overflow-hidden">
         <div className="flex items-center justify-between px-5 h-12 border-b border-border/30">
           <h3 className="text-sm font-semibold">Keyboard Shortcuts</h3>
           <button

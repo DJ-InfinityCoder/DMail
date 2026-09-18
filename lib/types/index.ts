@@ -11,6 +11,17 @@ export type ForwardingRule = Tables<"forwarding_rules">;
 export type Autoresponder = Tables<"autoresponders">;
 export type Signature = Tables<"signatures">;
 export type Email = Tables<"emails">;
+export type EmailListItem = Omit<
+  Email,
+  "body_html" | "body_text" | "raw_headers" | "received_at" | "references_header" | "sent_at"
+> & {
+  body_html?: string | null;
+  body_text?: string | null;
+  raw_headers?: any;
+  received_at?: string | null;
+  references_header?: string[] | null;
+  sent_at?: string | null;
+};
 export type EmailSend = Tables<"email_sends">;
 export type OrgSendQuota = Tables<"org_send_quotas">;
 

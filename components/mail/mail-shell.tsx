@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import Link from "next/link";
 import { Menu, X, Plus } from "lucide-react";
 import { Sidebar } from "@/components/mail/sidebar";
 import { ComposeModal } from "@/components/mail/compose-modal";
@@ -147,12 +148,12 @@ export function MailShell({
                 >
                   <Menu className="w-5 h-5 text-foreground" />
                 </button>
-                <div className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2 hover:opacity-85 transition-opacity" title="DMail Home">
                   <img src="/icon.png" alt="DMail Logo" className="w-6 h-6 object-contain" />
                   <span className="text-lg font-extrabold tracking-tight text-foreground flex items-center">
                     <span className="text-primary">D</span>Mail
                   </span>
-                </div>
+                </Link>
               </div>
 
               <div className="flex items-center gap-1">

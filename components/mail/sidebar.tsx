@@ -69,12 +69,17 @@ export function Sidebar({
     <aside className="w-[var(--sidebar-width)] h-full flex flex-col border-r border-border bg-card">
       {/* Brand Header */}
       <div className="px-4 h-14 flex items-center justify-between border-b border-border/80 min-w-0">
-        <div className="flex items-center gap-2.5">
-          <img src="/icon.png" alt="DMail Logo" className="w-7 h-7 object-contain" />
+        <Link
+          href="/"
+          onClick={() => onNavigate?.()}
+          className="flex items-center gap-2.5 hover:opacity-85 transition-opacity group cursor-pointer"
+          title="DMail Home"
+        >
+          <img src="/icon.png" alt="DMail Logo" className="w-7 h-7 object-contain group-hover:scale-105 transition-transform" />
           <span className="text-base font-bold tracking-tight text-foreground flex items-center">
             <span className="text-primary">D</span>Mail
           </span>
-        </div>
+        </Link>
         <span className="text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded bg-secondary text-muted-foreground">
           Workspace
         </span>
